@@ -1,7 +1,7 @@
 import BlogMeta from 'components/BlogMeta'
 import MetaDescription from 'components/MetaDescription'
-import * as demo from 'lib/demo.data'
 import { Settings } from 'lib/sanity.queries'
+import * as site from 'lib/site.data'
 
 export interface IndexPageHeadProps {
   settings: Settings
@@ -9,11 +9,11 @@ export interface IndexPageHeadProps {
 
 export default function IndexPageHead({ settings }: IndexPageHeadProps) {
   const {
-    title = demo.title,
-    description = demo.description,
+    title = site.title,
+    description = site.description,
     ogImage = {},
   } = settings
-  const ogImageTitle = ogImage?.title || demo.ogImageTitle
+  const ogImageTitle = ogImage?.title || site.ogImageTitle
 
   return (
     <>

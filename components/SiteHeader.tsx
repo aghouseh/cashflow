@@ -1,15 +1,15 @@
 import { PortableText } from '@portabletext/react'
 import Link from 'next/link'
 
-import styles from './BlogHeader.module.css'
+import styles from './SiteHeader.module.css'
 
-export default function BlogHeader({
+export default function SiteHeader({
   title,
   description,
   level,
 }: {
   title: string
-  description?: any[]
+  description?: string | any[]
   level: 1 | 2
 }) {
   switch (level) {
