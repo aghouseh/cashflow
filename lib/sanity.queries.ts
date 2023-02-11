@@ -9,13 +9,27 @@ const postFields = groq`
   "slug": slug.current,
   "author": author->{name, picture},
 `
+const entryFields = groq`
+  _id,
+  title,
+  description,
+  amount,
+  tags,
+  event
+`
 
 export const settingsQuery = groq`*[_type == "settings"][0]`
 
+// export const indexQuery = groq`
+// *[_type == "post"] | order(date desc, _updatedAt desc) {
+//   ${postFields}
+// }`
+
 export const indexQuery = groq`
-*[_type == "post"] | order(date desc, _updatedAt desc) {
-  ${postFields}
+*[_type == "entry"] | order(date desc, _updatedAt desc) {
+  ${entryFields}
 }`
+
 
 export const postAndMoreStoriesQuery = groq`
 {
@@ -33,11 +47,24 @@ export const postSlugsQuery = groq`
 *[_type == "post" && defined(slug.current)][].slug.current
 `
 
+export const entryIdsQuery = groq`
+*[_type == "entry"] { _id }
+`
+
+
 export const postBySlugQuery = groq`
 *[_type == "post" && slug.current == $slug][0] {
   ${postFields}
 }
 `
+
+
+export const entryByIdQuery = groq`
+*[_type == "entry" && _id == $id][0] {
+  ${entryFields}
+}
+`
+
 
 export interface Author {
   name?: string
@@ -53,6 +80,36 @@ export interface Post {
   author?: Author
   slug?: string
   content?: any
+}
+
+export interface Entry {
+  _id: string
+  title: string
+  description?: string
+  amount: number
+  tags?: string[]
+  excerpt?: string
+  event: Event
+}
+
+export interface Event {
+  _id: string
+  isActive: boolean
+  startDate: string
+  endDate?: string
+  isFullDay: boolean
+  isRecurring: boolean
+  recur: Recur
+}
+
+export interface Recur {
+  recurType: string,
+  recurInterval?: number
+  maxOccurences?: number
+  dayOfWeek?: number
+  weekOfMonth?: number
+  dayOfMonth?: number
+  month?: number
 }
 
 export interface Settings {

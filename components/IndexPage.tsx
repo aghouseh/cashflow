@@ -1,46 +1,39 @@
-import Container from 'components/BlogContainer'
-import Layout from 'components/BlogLayout'
-import HeroPost from 'components/HeroPost'
-import IndexPageHead from 'components/IndexPageHead'
-import MoreStories from 'components/MoreStories'
-import SiteHeader from 'components/SiteHeader'
-import type { Post, Settings } from 'lib/sanity.queries'
-import * as site from 'lib/site.data'
-import Head from 'next/head'
-
+import Container from 'components/BlogContainer';
+import IndexPageHead from 'components/IndexPageHead';
+import SiteHeader from 'components/SiteHeader';
+import Layout from 'components/SiteLayout';
+import type { Entry, Settings } from 'lib/sanity.queries';
+import { description as siteDescription, title as siteTitle } from 'lib/site.data';
+import Head from 'next/head';
+import Link from 'next/link';
 export interface IndexPageProps {
   preview?: boolean
   loading?: boolean
-  posts: Post[]
+  entries: Entry[]
   settings: Settings
 }
 
 export default function IndexPage(props: IndexPageProps) {
-  const { preview, loading, posts, settings } = props
-  const [heroPost, ...morePosts] = posts || []
-  const { title = site.title, description = site.description } = settings || {}
+	const { preview, loading, entries = [], settings } = props;
+	const { title = siteTitle, description = siteDescription } = settings || {};
 
-  return (
-    <>
-      <Head>
-        <IndexPageHead settings={settings} />
-      </Head>
-      <Layout preview={preview} loading={loading}>
-        <Container>
-          <SiteHeader title={title} description={description} level={1} />
-          {heroPost && (
-            <HeroPost
-              title={heroPost.title}
-              coverImage={heroPost.coverImage}
-              date={heroPost.date}
-              author={heroPost.author}
-              slug={heroPost.slug}
-              excerpt={heroPost.excerpt}
-            />
-          )}
-          {morePosts.length > 0 && <MoreStories posts={morePosts} />}
-        </Container>
-      </Layout>
-    </>
-  )
+	return (
+		<>
+			<Head>
+				<IndexPageHead settings={settings} />
+			</Head>
+			<Layout preview={preview} loading={loading}>
+				<Container>
+					<SiteHeader title={title} description={description} level={1} />
+					{entries.map((entry) => (
+						<div key={entry._id}>
+							<Link href={`/entries/${entry._id}`}>
+								{entry.title}
+							</Link>
+						</div>
+					))}
+				</Container>
+			</Layout>
+		</>
+	);
 }

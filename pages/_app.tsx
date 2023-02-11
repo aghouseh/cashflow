@@ -1,11 +1,12 @@
-import 'tailwindcss/tailwind.css'
+import 'tailwindcss/tailwind.css';
 
-import { AppProps } from 'next/app'
+import SiteLayout from 'components/SiteLayout';
+import { AppProps } from 'next/app';
 
 export default function App({ Component, pageProps }: AppProps) {
-  return (
-    <>
-      <Component {...pageProps} />
-    </>
-  )
+	return (
+		<SiteLayout preview={false}>
+			<Component {...pageProps} />
+		</SiteLayout>
+	);
 }
