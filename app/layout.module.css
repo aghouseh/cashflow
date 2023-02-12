@@ -1,0 +1,10 @@
+.body {
+}
+.header {
+  padding: var(--defaultPadding);
+  color: white;
+  background: gray;
+}
+.main {
+  padding: var(--defaultPadding);
+}
