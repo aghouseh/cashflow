@@ -3,13 +3,14 @@ import {
 	type Entry,
 	entryByIdQuery,
 	entryIdsQuery,
+	entryRangeQuery,
 	indexQuery,
 	type Post,
 	postAndMoreStoriesQuery,
 	postBySlugQuery,
 	postSlugsQuery,
 	type Settings,
-	settingsQuery,
+	settingsQuery
 } from 'lib/sanity.queries';
 import { createClient } from 'next-sanity';
 
@@ -49,3 +50,6 @@ export async function getAllEntries(): Promise<Entry[]> {
 	return (await client.fetch(indexQuery)) || [];
 }
 
+export async function getEntriesWithinRange(): Promise<Entry[]> {
+	return (await client.fetch(entryRangeQuery)) || [];
+}

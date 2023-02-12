@@ -6,6 +6,9 @@ export default function SiteNavigation() {
 	return <nav className={styles.nav}>
 		<ul>
 			<li>
+				<Link href="/timeline">Timeline</Link>
+			</li>
+			<li>
 				<Link href="/entries">Entries</Link>
 			</li>
 		</ul>

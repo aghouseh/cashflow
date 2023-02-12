@@ -1,4 +1,4 @@
-import { groq } from 'next-sanity'
+import { groq } from 'next-sanity';
 
 const postFields = groq`
   _id,
@@ -8,7 +8,7 @@ const postFields = groq`
   coverImage,
   "slug": slug.current,
   "author": author->{name, picture},
-`
+`;
 const entryFields = groq`
   _id,
   title,
@@ -16,9 +16,9 @@ const entryFields = groq`
   amount,
   tags,
   event
-`
+`;
 
-export const settingsQuery = groq`*[_type == "settings"][0]`
+export const settingsQuery = groq`*[_type == "settings"][0]`;
 
 // export const indexQuery = groq`
 // *[_type == "post"] | order(date desc, _updatedAt desc) {
@@ -28,8 +28,12 @@ export const settingsQuery = groq`*[_type == "settings"][0]`
 export const indexQuery = groq`
 *[_type == "entry"] | order(date desc, _updatedAt desc) {
   ${entryFields}
-}`
+}`;
 
+export const entryRangeQuery = groq`
+*[_type == "entry"] | order(date desc, _updatedAt desc) {
+  ${entryFields}
+}`;
 
 export const postAndMoreStoriesQuery = groq`
 {
@@ -41,29 +45,29 @@ export const postAndMoreStoriesQuery = groq`
     content,
     ${postFields}
   }
-}`
+}`;
 
 export const postSlugsQuery = groq`
 *[_type == "post" && defined(slug.current)][].slug.current
-`
+`;
 
 export const entryIdsQuery = groq`
 *[_type == "entry"] { _id }
-`
+`;
 
 
 export const postBySlugQuery = groq`
 *[_type == "post" && slug.current == $slug][0] {
   ${postFields}
 }
-`
+`;
 
 
 export const entryByIdQuery = groq`
 *[_type == "entry" && _id == $id][0] {
   ${entryFields}
 }
-`
+`;
 
 
 export interface Author {
