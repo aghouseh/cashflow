@@ -17,7 +17,7 @@ export default function SiteHeader({
 		return (
 			<header>
 				<h1>
-					{title}
+					<a href="/">{title}</a>
 				</h1>
 				<h4 className={styles.portableText}>
 					<PortableText value={description} />

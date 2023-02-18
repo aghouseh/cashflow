@@ -31,7 +31,15 @@ export const indexQuery = groq`
 }`;
 
 export const entryRangeQuery = groq`
-*[_type == "entry"] | order(date desc, _updatedAt desc) {
+*[_type == "entry"
+  && (
+    event.isRecurring
+    || (
+      dateTime(event.startDate) > dateTime($startDate)
+      && dateTime(event.startDate) < dateTime($endDate)
+    )
+  )
+]{
   ${entryFields}
 }`;
 
@@ -94,6 +102,16 @@ export interface Entry {
   tags?: string[]
   excerpt?: string
   event: Event
+}
+
+export interface GeneratedEntry extends Entry {
+  isGenerated: boolean
+  timestamp: Date
+}
+
+export interface EntryRange {
+	entry: Entry,
+	generated: Entry[]
 }
 
 export interface Event {

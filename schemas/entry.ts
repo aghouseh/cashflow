@@ -1,4 +1,4 @@
-import {defineField,defineType} from 'sanity'
+import {defineField,defineType} from 'sanity';
 
 export default defineType({
 	name: 'entry',
@@ -15,7 +15,7 @@ export default defineType({
 		}),
 		defineField({
 			name: 'amount',
-			type: 'number'
+			type: 'number',
 		}),
 		defineField({
 		  title: 'Tags',
@@ -23,12 +23,12 @@ export default defineType({
 		  type: 'array',
 		  of: [{ type: 'string' }],
 		  options: {
-		    layout: 'tags'
-		  }
+		    layout: 'tags',
+		  },
 		}),
 		defineField({
 			name: 'event',
 			type: 'event',
 		}),
-	]
+	],
 });
