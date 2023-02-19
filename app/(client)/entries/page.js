@@ -1,5 +1,5 @@
 import EntryList from 'components/EntryList';
-import { getAllEntries } from 'lib/sanity.client';
+import { getAllEntries } from 'data/entry';
 
 export default async function IndexPage() {
 	const entries = await getAllEntries();

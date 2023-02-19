@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["clientExtensions"]
+}
+
+datasource db {
+  provider = "mysql"
+  url = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+enum RecurType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum Month {
+  JANUARY
+  FEBRUARY
+  MARCH
+  APRIL
+  MAY
+  JUNE
+  JULY
+  AUGUST
+  SEPTEMBER
+  OCTOBER
+  NOVEMBER
+  DECEMBER
+}
+
+
+model Entry {
+  id Int @default(autoincrement()) @id
+  title String
+  description String?
+  amount Float
+  tags Tag[] @relation
+  eventId Int @unique
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+model Event {
+  id Int @default(autoincrement()) @id
+  isActive Boolean @default(true)
+  isFullDay Boolean @default(true)
+  isRecurring Boolean @default(true)
+  startDate DateTime
+  endDate DateTime?
+  recurId Int?
+  recur Recur? @relation
+  entry Entry?
+}
+
+model Recur {
+  id Int @default(autoincrement()) @id
+  type RecurType @default(MONTHLY)
+  interval Int @default(0)
+  maxOccurences Int?
+  dayOfWeek Day?
+  weekOfMonth Int?
+  dayOfMonth Int?
+  month Month?
+  eventId Int? @unique
+  event Event? @relation(fields: [eventId], references: [id])
+}
+
+model Tag {
+  id Int @default(autoincrement()) @id
+  title String
+  entries Entry[]
+}

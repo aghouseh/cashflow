@@ -4,8 +4,8 @@ export default function EntryList({ entries }) {
 	return (
 		<>
 			{entries.map((entry) => (
-				<div key={entry._id}>
-					<Link href={`/entries/${entry._id}`}>
+				<div key={entry.id}>
+					<Link href={`/entries/${entry.id}`}>
 						{entry.title}
 					</Link>
 				</div>

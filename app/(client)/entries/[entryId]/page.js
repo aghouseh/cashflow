@@ -1,5 +1,5 @@
 import EntryDetail from 'components/EntryDetail';
-import { getEntryById } from 'lib/sanity.client';
+import { getEntryById } from 'data/entry';
 
 export const revalidate = 60; // revalidate this page every 60 seconds
 
