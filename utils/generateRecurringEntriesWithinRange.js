@@ -6,7 +6,7 @@ export default function generateRecurringEntriesWithinRange({
 	const entries = [{
 		...entry,
 		isGenerated: true,
-		timestamp: new Date(entry.event.startDate),
+		timestamp: new Date(entry.startDate),
 	}];
 	//TODO: generate them derp
 	return entries;
