@@ -2,7 +2,6 @@
 const config = {
 	images: {
 		remotePatterns: [
-			{ hostname: 'cdn.sanity.io' },
 			{ hostname: 'source.unsplash.com' },
 		],
 	},
@@ -14,7 +13,9 @@ const config = {
 		/// Set this to false if you want production builds to abort if there's lint errors
 		ignoreDuringBuilds: process.env.VERCEL_ENV === 'production',
 	},
-	experimental:{appDir: true},
+	experimental: {
+		appDir: true,
+	},
 };
 
 export default config;

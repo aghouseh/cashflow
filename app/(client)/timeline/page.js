@@ -1,8 +1,6 @@
-'use client';
-
 import Timeline from 'components/Timeline';
-import { getEntriesWithinRange } from 'lib/sanity.client';
-import { use, useState } from 'react';
+import { getEntriesWithinRange } from 'data/entry';
+import { use } from 'react';
 
 const startDate = new Date();
 const endDate = new Date();

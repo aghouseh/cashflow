@@ -1,4 +1,3 @@
-import { PortableText } from '@portabletext/react';
 import Link from 'next/link';
 
 import styles from './SiteHeader.module.css';
@@ -19,8 +18,8 @@ export default function SiteHeader({
 				<h1>
 					<a href="/">{title}</a>
 				</h1>
-				<h4 className={styles.portableText}>
-					<PortableText value={description} />
+				<h4 className={styles.description}>
+					<p>{description}</p>
 				</h4>
 			</header>
 		);
