@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import formatDate from 'utils/formatDate';
+import { formatDate } from 'utils/date';
 
 const prisma = new PrismaClient({ log: ['query', 'info'] });
 

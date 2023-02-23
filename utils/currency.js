@@ -1,4 +1,4 @@
-export default function formatCurrency(number) {
+export function formatCurrency(number) {
 	if (isNaN(number)) {
 		return number;
 	}

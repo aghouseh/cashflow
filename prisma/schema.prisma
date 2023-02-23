@@ -9,47 +9,18 @@ datasource db {
   relationMode = "prisma"
 }
 
-enum RecurType {
-  DAILY
-  WEEKLY
-  MONTHLY
-  YEARLY
-}
-
-enum Day {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
-  SUNDAY
-}
-
-enum Month {
-  JANUARY
-  FEBRUARY
-  MARCH
-  APRIL
-  MAY
-  JUNE
-  JULY
-  AUGUST
-  SEPTEMBER
-  OCTOBER
-  NOVEMBER
-  DECEMBER
-}
-
 
 model Entry {
   id Int @default(autoincrement()) @id
   title String
   description String?
   amount Float
+  type EntryType @default(RELATIVE)
   tags Tag[] @relation
   eventId Int @unique
   event Event @relation(fields: [eventId], references: [id])
+  userId Int
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Event {
@@ -82,3 +53,62 @@ model Tag {
   title String
   entries Entry[]
 }
+
+model Settings {
+  id Int @id @default(autoincrement())
+  userId Int @unique
+  user User @relation(fields: [userId], references: [id])
+}
+model User {
+  id Int @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  email String @unique
+  name String?
+  password String
+  entries Entry[]
+  settings Settings?
+  role Role @default(USER)
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum EntryType {
+  RELATIVE
+  ABSOLUTE
+}
+
+enum RecurType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum Month {
+  JANUARY
+  FEBRUARY
+  MARCH
+  APRIL
+  MAY
+  JUNE
+  JULY
+  AUGUST
+  SEPTEMBER
+  OCTOBER
+  NOVEMBER
+  DECEMBER
+}
+

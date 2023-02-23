@@ -9,7 +9,10 @@ export default function EntryList({ entries }) {
 						{entry.title}
 					</Link>
 				</div>
-			))}			
+			))}
+			<div>
+				<Link href="/entries/new">Create New</Link>
+			</div>
 		</>
 	);
 }

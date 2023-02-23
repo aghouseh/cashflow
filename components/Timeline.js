@@ -1,8 +1,10 @@
-import Link from 'next/link';
-import generateRecurringEntriesWithinRange from 'utils/generateRecurringEntriesWithinRange';
+import { displayDate } from 'utils/date';
+import generateDaysInRange, { isSameDay } from 'utils/generateDaysInRange';
+import generateRecurringEntriesWithinRange from 'utils/generateRecurringEntriesWithinRange';;
+import TimelineDay from 'components/TimelineDay';
+import TimelineEntry from 'components/TimelineEntry';
 
-import generateDaysInRange, { isSameDay } from '/utils/generateDaysInRange';
-
+import styles from './Timeline.module.css';
 function generateEntries({ entries, startDate, endDate }) {
 	const generated = entries.map(
 		entry => generateRecurringEntriesWithinRange({ entry, startDate, endDate })
@@ -18,19 +20,15 @@ export default function Timeline({ entries, startDate, endDate }) {
 		entries: generatedEntries.filter(entry => isSameDay(entry.timestamp, date)),
 	}));
 	return (
-		<>
+		<div className={styles.timeline}>
 			{daysWithEntries.map((day, index) => (
-				<div key={index}>
-					<h3>{ day.date.toString() }</h3>
+				<TimelineDay key={index} day={day.date.getDay()}>
+					<h3>{ displayDate(day.date) }</h3>
 					{day.entries.map(event => (
-						<>
-							<Link href={`/entries/${event.entry.id}`}>
-								{event.entry.title}
-							</Link>
-							<span>{event.timestamp.toString()}</span>
-						</>))}
-				</div>
+						<TimelineEntry key={event.entry.id} entry={event.entry} />
+					))}
+				</TimelineDay>
 			))}			
-		</>
+		</div>
 	);
 }

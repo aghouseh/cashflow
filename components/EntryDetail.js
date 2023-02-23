@@ -1,5 +1,5 @@
 import Link from "next/link";
-import formatCurrency from "utils/formatCurrency";
+import { formatCurrency } from "utils/currency";
 
 export default function EntryDetail({ entry }) {
 	return (
