@@ -1,0 +1,111 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap");
+@import "tailwindcss";
+
+/* Design tokens — mirror src/midfi/styles.css from the design handoff.
+   Mock README is source of truth; do not invent new color/space values here. */
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-bg: #fbfaf7;
+  --color-card: #ffffff;
+  --color-card-2: #fafaf6;
+  --color-ink: #161614;
+  --color-ink-2: #56554f;
+  --color-ink-3: #8f8d85;
+  --color-ink-4: #c4c2b8;
+  --color-line: #ebe9e3;
+  --color-line-2: #dad8d0;
+
+  --color-amber: oklch(0.74 0.12 75);
+  --color-amber-ink: oklch(0.42 0.10 70);
+  --color-amber-soft: oklch(0.94 0.04 80);
+
+  --color-in: oklch(0.58 0.07 155);
+  --color-in-ink: oklch(0.42 0.06 155);
+  --color-in-soft: oklch(0.94 0.03 155);
+
+  --color-out: oklch(0.58 0.10 28);
+  --color-out-ink: oklch(0.42 0.08 28);
+  --color-out-soft: oklch(0.95 0.025 28);
+
+  --radius-card: 14px;
+  --radius-field: 8px;
+  --radius-chip: 999px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+html {
+  font-feature-settings: "ss01", "cv11";
+}
+
+body {
+  margin: 0;
+  color: var(--color-ink);
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Numerics and dates default to tabular-nums per design system. */
+.mono,
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Micro-label — 10px Geist Mono uppercase, 0.09em tracking. */
+.micro {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+
+/* Display number (hero balance). */
+.display {
+  font-family: var(--font-mono);
+  font-size: 56px;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.display-sm {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.018em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Card surface — flat with hairline border, no shadow. */
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  padding: 22px 24px;
+}
+
+.hairline {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  margin: 18px 0;
+}

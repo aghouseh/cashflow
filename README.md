@@ -1,155 +1,193 @@
-# A Next.js Blog with a Native Authoring Experience<!-- omit in toc -->
+Welcome to your new TanStack Start app! 
 
-This starter is a statically generated blog that uses [Next.js][nextjs] for the frontend and [Sanity][sanity-homepage] to handle its content. It comes with a native Sanity Studio that offers features like real-time collaboration, instant side-by-side content previews, and intuitive editing.
+# Getting Started
 
-The Studio connects to Sanity Content Lake, which gives you hosted content APIs with a flexible query language, on-demand image transformations, powerful patching, and more. You can use this starter to kick-start a blog or learn these technologies.
-
-[![Deploy with Vercel](https://vercel.com/button)][vercel-deploy]
-
-> **Note**
->
-> This starter uses the `/pages` directory for Next.js routing.
->
-> The template will be migrated to the currently experimental [/app][app-dir] directory
-> when Vercel announce that it is production ready.
-
-## Features
-
-- A performant, static blog with editable posts, authors, and site settings
-- A native and customizable authoring environment, accessible on `yourblog.com/studio`
-- Real-time and collaborative content editing with fine-grained revision history
-- Side-by-side instant content preview that works across your whole site
-- Support for block content and the most advanced custom fields capability in the industry
-- Webhook-triggered Incremental Static Revalidation; no need to wait for a rebuild to publish new content
-- Free and boosted Sanity project with unlimited admin users, free content updates, and pay-as-you-go for API overages
-- A project with starter-friendly and not too heavy-handed TypeScript and Tailwind.css
-
-## Table of Contents
-
-- [Features](#features)
-- [Table of Contents](#table-of-contents)
-- [Project Overview](#project-overview)
-  - [Important files and folders](#important-files-and-folders)
-- [Configuration](#configuration)
-  - [Step 1. Set up the environment](#step-1-set-up-the-environment)
-  - [Step 2. Set up the project locally](#step-2-set-up-the-project-locally)
-  - [Step 3. Run Next.js locally in development mode](#step-3-run-nextjs-locally-in-development-mode)
-  - [Step 4. Deploy to production](#step-4-deploy-to-production)
-- [Questions and Answers](#questions-and-answers)
-  - [It doesn't work! Where can I get help?](#it-doesnt-work-where-can-i-get-help)
-  - [How can I remove the "Next steps" block from my blog?](#how-can-i-remove-the-next-steps-block-from-my-blog)
-  - [How can I set up Incremental Static Revalidation?](#how-can-i-set-up-incremental-static-revalidation)
-- [Next steps](#next-steps)
-
-## Project Overview
-
-| [Blog](https://nextjs-blog.sanity.build)                                                                       | [Studio](https://nextjs-blog.sanity.build/studio)                                                                       |
-| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| ![Blog](https://user-images.githubusercontent.com/44635000/197511913-94ea36dd-099d-4dbf-b71f-3335879621c9.png) | ![Sanity Studio](https://user-images.githubusercontent.com/44635000/197511725-b2a2e2e5-287b-41a9-84c6-ec90d37ca480.png) |
-
-### Important files and folders
-
-| File(s)                                     | Description                                              |
-| ------------------------------------------- | -------------------------------------------------------- |
-| `sanity.config.ts`                          |  Config file for Sanity Studio                           |
-| `sanity.cli.ts`                             |  Config file for Sanity CLI                              |
-| `/pages/studio/[[...index]].tsx`            |  Where Sanity Studio is mounted                          |
-| `/pages/api/revalidate.ts`                  |  Serverless route for triggering ISR                     |
-| `/pages/api/preview.ts`                     |  Serverless route for triggering Preview mode            |
-| `/schemas`                                  |  Where Sanity Studio gets its content types from         |
-| `/plugins`                                  |  Where the advanced Sanity Studio customization is setup |
-| `/lib/sanity.api.ts`,`/lib/sanity.image.ts` | Configuration for the Sanity Content Lake client         |
-| `/lib/sanity.preview.ts`                    | Configuration for the live Preview Mode                  |
-
-## Configuration
-
-### Step 1. Set up the environment
-
-Use the Deploy Button below. It will let you deploy the starter using [Vercel](https://vercel.com?utm_source=github&utm_medium=readme&utm_campaign=next-sanity-example) as well as connect it to your Sanity Content Lake using [the Sanity Vercel Integration][integration].
-
-[![Deploy with Vercel](https://vercel.com/button)][vercel-deploy]
-
-### Step 2. Set up the project locally
-
-[Clone the repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) that was created for you on your GitHub account. Once cloned, run the following command from the project's root directory:
+To run this application:
 
 ```bash
-npx vercel link
+npm install
+npm run dev
 ```
 
-Download the environment variables needed to connect Next.js and the Studio to your Sanity project:
+# Building For Production
+
+To build this application for production:
 
 ```bash
-npx vercel env pull
+npm run build
 ```
 
-### Step 3. Run Next.js locally in development mode
+## Testing
+
+This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
 
 ```bash
-npm install && npm run dev
+npm run test
 ```
 
-When you run this development server, the changes you make in your frontend and studio configuration will be applied live using hot reloading.
+## Styling
 
-Your blog should be up and running on [http://localhost:3000][localhost-3000]! You can create and edit content on [http://localhost:3000/studio][localhost-3000-studio].
+This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
 
-### Step 4. Deploy to production
+### Removing Tailwind CSS
 
-To deploy your changes to production you use `git`:
+If you prefer not to use Tailwind CSS:
 
-```bash
-git add .
-git commit
-git push
+1. Remove the demo pages in `src/routes/demo/`
+2. Replace the Tailwind import in `src/styles.css` with your own styles
+3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
+4. Uninstall the packages: `npm install @tailwindcss/vite tailwindcss -D`
+
+
+
+## Routing
+
+This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
+
+### Adding A Route
+
+To add a new route to your application just add a new file in the `./src/routes` directory.
+
+TanStack will automatically generate the content of the route file for you.
+
+Now that you have two routes you can use a `Link` component to navigate between them.
+
+### Adding Links
+
+To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
+
+```tsx
+import { Link } from "@tanstack/react-router";
 ```
 
-Alternatively, you can deploy without a `git` hosting provider using the Vercel CLI:
+Then anywhere in your JSX you can use it like so:
 
-```bash
-npx vercel --prod
+```tsx
+<Link to="/about">About</Link>
 ```
 
-## Questions and Answers
+This will create a link that will navigate to the `/about` route.
 
-### It doesn't work! Where can I get help?
+More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
 
-In case of any issues or questions, you can post:
+### Using A Layout
 
-- [GitHub Discussions for Next.js][vercel-github]
-- [Sanity's GitHub Discussions][sanity-github]
-- [Sanity's Community Slack][sanity-community]
+In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
 
-### How can I remove the "Next steps" block from my blog?
+Here is an example layout that includes a header:
 
-You can remove it by deleting the `IntroTemplate` component in `/components/IndexPage.tsx`.
+```tsx
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 
-### How can I set up Incremental Static Revalidation?
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'My App' },
+    ],
+  }),
+  shellComponent: ({ children }) => (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <header>
+          <nav>
+            <Link to="/">Home</Link>
+            <Link to="/about">About</Link>
+          </nav>
+        </header>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  ),
+})
+```
 
-Go to the serverless function code in `/pages/api/revalidate.ts`. In the code comments, you'll find instructions for how to set up [ISR][vercel-isr].
+More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
 
-## Next steps
+## Server Functions
 
-- [Join our Slack community to ask questions and get help][sanity-community]
-- [How to edit my content structure?][sanity-schema-types]
-- [How to query content?][sanity-groq]
-- [What is content modelling?][sanity-content-modelling]
+TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
 
-[vercel-deploy]: https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsanity-io%2Fnextjs-blog-cms-sanity-v3&repository-name=blog-nextjs-sanity&project-name=blog-nextjs-sanity&demo-title=Blog%20with%20Built-in%20Content%20Editing&demo-description=A%20Sanity-powered%20blog%20with%20built-in%20content%20editing%20%26%20instant%20previews&demo-url=https%3A%2F%2Fnextjs-blog.sanity.build%2F%3Futm_source%3Dvercel%26utm_medium%3Dreferral&demo-image=https%3A%2F%2Fuser-images.githubusercontent.com%2F81981%2F197501516-c7c8092d-0305-4abe-afb7-1e896ef7b90a.png&integration-ids=oac_hb2LITYajhRQ0i4QznmKH7gx&external-id=nextjs;template=nextjs-blog-cms-sanity-v3
-[integration]: https://www.sanity.io/docs/vercel-integration?utm_source=github.com&utm_medium=referral&utm_campaign=nextjs-v3vercelstarter
-[`.env.local.example`]: .env.local.example
-[nextjs]: https://github.com/vercel/next.js
-[sanity-create]: https://www.sanity.io/get-started/create-project?utm_source=github.com&utm_medium=referral&utm_campaign=nextjs-v3vercelstarter
-[sanity-deployment]: https://www.sanity.io/docs/deployment?utm_source=github.com&utm_medium=referral&utm_campaign=nextjs-v3vercelstarter
-[sanity-homepage]: https://www.sanity.io?utm_source=github.com&utm_medium=referral&utm_campaign=nextjs-v3vercelstarter
-[sanity-community]: https://slack.sanity.io/
-[sanity-schema-types]: https://www.sanity.io/docs/schema-types?utm_source=github.com&utm_medium=referral&utm_campaign=nextjs-v3vercelstarter
-[sanity-github]: https://github.com/sanity-io/sanity/discussions
-[sanity-groq]: https://www.sanity.io/docs/groq?utm_source=github.com&utm_medium=referral&utm_campaign=nextjs-v3vercelstarter
-[sanity-content-modelling]: https://www.sanity.io/docs/content-modelling?utm_source=github.com&utm_medium=referral&utm_campaign=nextjs-v3vercelstarter
-[sanity-webhooks]: https://www.sanity.io/docs/webhooks?utm_source=github.com&utm_medium=referral&utm_campaign=nextjs-v3vercelstarter
-[localhost-3000]: http://localhost:3000
-[localhost-3000-studio]: http://localhost:3000/studio
-[vercel-isr]: https://nextjs.org/blog/next-12-1#on-demand-incremental-static-regeneration-beta
-[vercel]: https://vercel.com
-[vercel-github]: https://github.com/vercel/next.js/discussions
-[app-dir]: https://beta.nextjs.org/docs/routing/fundamentals#the-app-directory
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+
+const getServerTime = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  return new Date().toISOString()
+})
+
+// Use in a component
+function MyComponent() {
+  const [time, setTime] = useState('')
+  
+  useEffect(() => {
+    getServerTime().then(setTime)
+  }, [])
+  
+  return <div>Server time: {time}</div>
+}
+```
+
+## API Routes
+
+You can create API routes by using the `server` property in your route definitions:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { json } from '@tanstack/react-start'
+
+export const Route = createFileRoute('/api/hello')({
+  server: {
+    handlers: {
+      GET: () => json({ message: 'Hello, World!' }),
+    },
+  },
+})
+```
+
+## Data Fetching
+
+There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
+
+For example:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/people')({
+  loader: async () => {
+    const response = await fetch('https://swapi.dev/api/people')
+    return response.json()
+  },
+  component: PeopleComponent,
+})
+
+function PeopleComponent() {
+  const data = Route.useLoaderData()
+  return (
+    <ul>
+      {data.results.map((person) => (
+        <li key={person.name}>{person.name}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
+
+# Demo files
+
+Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
+
+# Learn More
+
+You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
+
+For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
