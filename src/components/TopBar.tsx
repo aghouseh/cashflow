@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
+import VaultControl from './vault/VaultControl'
 
-// 52px tab nav per mock README. Brand mark + wordmark left, tabs center, account chip right.
-// Active tab styling driven by TanStack Router's activeProps.
+// 52px tab nav per mock README. Brand mark + wordmark left, tabs center,
+// vault control right. There is no "profile" — local-first; device is identity.
 
 const TABS = [
   { to: '/', label: 'Balance' },
@@ -33,14 +34,8 @@ export default function TopBar() {
           ))}
         </ul>
 
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            type="button"
-            className="rounded-chip border border-line-2 px-3 py-1 text-[12px] text-ink-2 transition-colors hover:text-ink"
-          >
-            Personal
-          </button>
-          <div aria-hidden className="h-7 w-7 rounded-full bg-ink-4" />
+        <div className="ml-auto">
+          <VaultControl />
         </div>
       </nav>
     </header>

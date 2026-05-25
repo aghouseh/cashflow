@@ -2,22 +2,32 @@ import { SQLocalDrizzle } from 'sqlocal/drizzle'
 import { drizzle } from 'drizzle-orm/sqlite-proxy'
 import * as schema from './schema'
 
-// SQLocal runs SQLite WASM in a Web Worker, persisting to OPFS by default.
-// The `databasePath` is a virtual file name inside OPFS, not a real path.
+// SQLocal's constructor creates a Web Worker. Imports are safe on the server;
+// actually instantiating one is not. We defer construction until the first
+// call so the module can be imported during SSR without crashing.
 
-const sqlocal = new SQLocalDrizzle({ databasePath: 'cashflow.sqlite3' })
+let instance: SQLocalDrizzle | null = null
 
-export const { sql, transaction } = sqlocal
+function client(): SQLocalDrizzle {
+  if (instance) return instance
+  if (typeof window === 'undefined') {
+    throw new Error('SQLocal is browser-only and must not be touched during SSR')
+  }
+  instance = new SQLocalDrizzle({ databasePath: 'cashflow.sqlite3' })
+  return instance
+}
 
-// drizzle-orm wires through SQLocal's sqlite-proxy compatible driver.
-export const db = drizzle(sqlocal.driver, sqlocal.batchDriver, { schema })
+export const db = drizzle(
+  async (sql, params, method) => client().driver(sql, params, method),
+  { schema },
+)
 
 // Exposed for the vault module to read/write the raw SQLite file when toggling
 // encryption (load to encrypt on enable, overwrite with decrypted blob on unlock).
 export const databaseFile = {
-  read: () => sqlocal.getDatabaseFile(),
+  read: () => client().getDatabaseFile(),
   write: (file: File | Blob | ArrayBuffer | Uint8Array) =>
-    sqlocal.overwriteDatabaseFile(file),
+    client().overwriteDatabaseFile(file),
 }
 
 export type DB = typeof db

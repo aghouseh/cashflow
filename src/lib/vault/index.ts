@@ -9,15 +9,28 @@
 // Enable is one-way: once encrypted, the user cannot revert to plaintext mode
 // from inside the app. To go back, export plaintext JSON + start fresh.
 //
-// Currently scaffolded: crypto + state shape only. Wire-up of SQLocal blob
-// shuttling lives in a follow-up task once the UI screens that need it land.
+// Disk I/O for the encrypted blob is implemented in ./disk.ts. This file owns
+// the state machine + subscription API consumed by the React layer.
 
 import { databaseFile } from '../db/client'
 import { encryptBlob, decryptBlob } from './crypto'
+import { readEncryptedBlob, writeEncryptedBlob } from './disk'
 import { readMeta, writeMeta, type VaultMode } from './state'
 
 let currentMode: VaultMode = readMeta().encrypted ? 'locked' : 'none'
 let keyPassphrase: string | null = null
+
+type Listener = (mode: VaultMode) => void
+const listeners = new Set<Listener>()
+
+function emit() {
+  for (const cb of listeners) cb(currentMode)
+}
+
+export function subscribe(cb: Listener): () => void {
+  listeners.add(cb)
+  return () => listeners.delete(cb)
+}
 
 export function getMode(): VaultMode {
   return currentMode
@@ -27,32 +40,50 @@ export function isUnlocked(): boolean {
   return currentMode === 'none' || currentMode === 'unlocked'
 }
 
+async function snapshotPlaintext(): Promise<Uint8Array> {
+  const file = await databaseFile.read()
+  return new Uint8Array(await file.arrayBuffer())
+}
+
 export async function enableEncryption(passphrase: string): Promise<void> {
   if (currentMode !== 'none') {
     throw new Error('Encryption already enabled')
   }
-  const plaintext = new Uint8Array(await (await databaseFile.read()).arrayBuffer())
+  const plaintext = await snapshotPlaintext()
   const ciphertext = await encryptBlob(plaintext, passphrase)
-  // TODO: write ciphertext to a separate OPFS path and clear the plaintext SQLocal file.
-  void ciphertext
+  await writeEncryptedBlob(ciphertext)
   writeMeta({ encrypted: true, encryptedBlobPath: 'cashflow.vault' })
   keyPassphrase = passphrase
   currentMode = 'unlocked'
+  emit()
 }
 
 export async function unlock(passphrase: string): Promise<void> {
   if (currentMode !== 'locked') return
-  // TODO: read ciphertext from OPFS, decrypt, overwriteDatabaseFile.
-  void decryptBlob
+  const blob = await readEncryptedBlob()
+  if (!blob) throw new Error('No encrypted vault found')
+  const plaintext = await decryptBlob(blob, passphrase)
+  await databaseFile.write(plaintext)
   keyPassphrase = passphrase
   currentMode = 'unlocked'
+  emit()
 }
 
 export async function lock(): Promise<void> {
-  if (currentMode !== 'unlocked') return
-  // TODO: encrypt current SQLocal file with stored passphrase, persist, zero in-memory db.
+  if (currentMode !== 'unlocked' || !keyPassphrase) return
+  await flush()
   keyPassphrase = null
   currentMode = 'locked'
+  emit()
+}
+
+// Encrypt the live SQLocal file and persist to OPFS. Called after every write
+// when in unlocked mode; also called by lock() before discarding the key.
+export async function flush(): Promise<void> {
+  if (currentMode !== 'unlocked' || !keyPassphrase) return
+  const plaintext = await snapshotPlaintext()
+  const ciphertext = await encryptBlob(plaintext, keyPassphrase)
+  await writeEncryptedBlob(ciphertext)
 }
 
 export async function changePassphrase(
@@ -66,6 +97,5 @@ export async function changePassphrase(
     throw new Error('Old passphrase incorrect')
   }
   keyPassphrase = newPassphrase
-  await lock()
-  await unlock(newPassphrase)
+  await flush()
 }
