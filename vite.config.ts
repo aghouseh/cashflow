@@ -5,6 +5,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import sqlocal from 'sqlocal/vite'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
@@ -33,6 +34,11 @@ const config = defineConfig({
   plugins: [
     devtools(),
     tailwindcss(),
+    // SQLocal needs cross-origin isolation (COOP: same-origin + COEP:
+    // require-corp) for OPFS access; without those headers the browser
+    // blocks persistent storage and the SQLite blob lives only in memory.
+    // The plugin sets the headers automatically on the dev server.
+    sqlocal(),
     // Local-first app — all data lives in OPFS/Web Crypto/IndexedDB,
     // none of which exist on the server. SSR would render an empty shell
     // anyway, so we run as an SPA. Also sidesteps a TanStack Start
