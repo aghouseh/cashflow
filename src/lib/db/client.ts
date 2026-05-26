@@ -17,8 +17,11 @@ function client(): SQLocalDrizzle {
   return instance
 }
 
+// Drizzle's sqlite-proxy wants both a single-statement driver and a batch
+// driver. SQLocalDrizzle exposes both on the instance.
 export const db = drizzle(
   async (sql, params, method) => client().driver(sql, params, method),
+  async (queries) => client().batchDriver(queries),
   { schema },
 )
 

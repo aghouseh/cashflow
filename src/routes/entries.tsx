@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { requireAnchor } from '../lib/route-guards'
 
 export const Route = createFileRoute('/entries')({
+  beforeLoad: requireAnchor,
   component: EntriesPage,
 })
 

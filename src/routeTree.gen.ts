@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScenariosRouteImport } from './routes/scenarios'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LedgerRouteImport } from './routes/ledger'
 import { Route as EntriesRouteImport } from './routes/entries'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const ScenariosRoute = ScenariosRouteImport.update({
   id: '/scenarios',
   path: '/scenarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LedgerRoute = LedgerRouteImport.update({
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/entries': typeof EntriesRoute
   '/ledger': typeof LedgerRoute
+  '/onboarding': typeof OnboardingRoute
   '/scenarios': typeof ScenariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/entries': typeof EntriesRoute
   '/ledger': typeof LedgerRoute
+  '/onboarding': typeof OnboardingRoute
   '/scenarios': typeof ScenariosRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/entries': typeof EntriesRoute
   '/ledger': typeof LedgerRoute
+  '/onboarding': typeof OnboardingRoute
   '/scenarios': typeof ScenariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/entries' | '/ledger' | '/scenarios'
+  fullPaths: '/' | '/entries' | '/ledger' | '/onboarding' | '/scenarios'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/entries' | '/ledger' | '/scenarios'
-  id: '__root__' | '/' | '/entries' | '/ledger' | '/scenarios'
+  to: '/' | '/entries' | '/ledger' | '/onboarding' | '/scenarios'
+  id: '__root__' | '/' | '/entries' | '/ledger' | '/onboarding' | '/scenarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EntriesRoute: typeof EntriesRoute
   LedgerRoute: typeof LedgerRoute
+  OnboardingRoute: typeof OnboardingRoute
   ScenariosRoute: typeof ScenariosRoute
 }
 
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/scenarios'
       fullPath: '/scenarios'
       preLoaderRoute: typeof ScenariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ledger': {
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EntriesRoute: EntriesRoute,
   LedgerRoute: LedgerRoute,
+  OnboardingRoute: OnboardingRoute,
   ScenariosRoute: ScenariosRoute,
 }
 export const routeTree = rootRouteImport
