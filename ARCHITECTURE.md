@@ -29,6 +29,17 @@ Deliberately excluded: Next.js, Sanity, date-fns, server-side auth, hosted DB.
 
 All app data lives in **one SQLite file in OPFS** at `cashflow.sqlite3`. Schema defined in `src/lib/db/schema.ts`. Drizzle types are inferred from the schema (no separate type definitions).
 
+### Deployment requirement — cross-origin isolation
+
+SQLocal needs OPFS, which the browser only exposes when the page is served with cross-origin isolation:
+
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+Without these headers, the SQLite blob lives only in worker memory and **vanishes on refresh** — onboarding appears to "lose" everything. In dev, the `sqlocal/vite` plugin (registered in `vite.config.ts`) sets the headers automatically. In production, the host serving `dist/client/` must add them itself. Mini's Caddy block for `cashflow.houza.org` includes both.
+
 Tables:
 - `anchor` — singleton row (id = `'singleton'`). Holds the starting balance, the as-of date, and an optional account label.
 - `entry` — one row per recurring or one-off cashflow item. Recurrence stored as RFC 5545 RRULE string in `entry.rrule` (null = one-time at `entry.start_date`). `kind` is `'IN' | 'OUT'`.
