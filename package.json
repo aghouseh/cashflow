@@ -49,5 +49,8 @@
       "esbuild",
       "lightningcss"
     ]
+  },
+  "overrides": {
+    "@tanstack/start-server-core": "1.169.4"
   }
 }
