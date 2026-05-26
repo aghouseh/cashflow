@@ -12,10 +12,13 @@ import { db } from './client'
 // `sql.raw` is the right tool — it ships the string verbatim with no params.
 
 const STATEMENTS = [
-  `CREATE TABLE IF NOT EXISTS anchor (
-    id TEXT PRIMARY KEY DEFAULT 'singleton',
+  // Discovery-phase rewrite: drop the old singleton `anchor` table on any
+  // device that still has it. Idempotent — no-op on fresh installs.
+  `DROP TABLE IF EXISTS anchor`,
+  `CREATE TABLE IF NOT EXISTS balance_snapshot (
+    id TEXT PRIMARY KEY,
     balance REAL NOT NULL,
-    as_of TEXT NOT NULL,
+    as_of TEXT NOT NULL UNIQUE,
     account_label TEXT,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,

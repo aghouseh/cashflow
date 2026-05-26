@@ -8,12 +8,16 @@ import {
 } from 'drizzle-orm/sqlite-core'
 
 // Local-first cashflow schema. No User table — device is identity.
-// Anchor is a singleton (one row); enforced at app level, not by the DB.
+//
+// `balance_snapshot` is a stream of observed balances. The projection engine
+// uses the most recent snapshot (MAX(as_of) <= today) as its origin. Past
+// snapshots stay around for audit + future drift visualization. One row per
+// civil date; re-writing the same date upserts that row.
 
-export const anchor = sqliteTable('anchor', {
-  id: text('id').primaryKey().default('singleton'),
+export const balanceSnapshot = sqliteTable('balance_snapshot', {
+  id: text('id').primaryKey(),
   balance: real('balance').notNull(),
-  asOf: text('as_of').notNull(), // ISO date (YYYY-MM-DD) — civil date, no TZ
+  asOf: text('as_of').notNull().unique(), // ISO date (YYYY-MM-DD), civil
   accountLabel: text('account_label'),
   updatedAt: text('updated_at')
     .notNull()
@@ -56,8 +60,8 @@ export const entryTag = sqliteTable(
   (t) => [primaryKey({ columns: [t.entryId, t.tagId] })],
 )
 
-export type Anchor = typeof anchor.$inferSelect
-export type AnchorInsert = typeof anchor.$inferInsert
+export type BalanceSnapshot = typeof balanceSnapshot.$inferSelect
+export type BalanceSnapshotInsert = typeof balanceSnapshot.$inferInsert
 export type Entry = typeof entry.$inferSelect
 export type EntryInsert = typeof entry.$inferInsert
 export type Tag = typeof tag.$inferSelect

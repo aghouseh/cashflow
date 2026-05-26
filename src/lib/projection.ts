@@ -1,11 +1,12 @@
 // Projection engine — pure function.
 //
-//   (anchor, entries, horizonDays) → { events, series }
+//   (snapshot, entries, horizonDays) → { events, series }
 //
 // `series[i]` is the running balance at end of day `i` (0-indexed from
-// anchor.asOf). `series[0] === anchor.balance` — anchor.asOf is treated as
-// "balance is known as of today, before tomorrow's events", so the expansion
-// window is *strictly after* asOf, up to and including asOf + horizonDays.
+// snapshot.asOf). `series[0] === snapshot.balance` — snapshot.asOf is treated
+// as "balance is known as of today, before tomorrow's events", so the
+// expansion window is *strictly after* asOf, up to and including
+// asOf + horizonDays.
 //
 // Recurrence: opaque RFC 5545 RRULE strings, expanded via rrule.js. One-time
 // entries (`rrule == null`) emit a single event at `startDate` if it falls in
@@ -13,7 +14,7 @@
 
 import { Temporal } from '@js-temporal/polyfill'
 import { rrulestr } from 'rrule'
-import type { Anchor, Entry } from '#/lib/db/schema'
+import type { BalanceSnapshot, Entry } from '#/lib/db/schema'
 
 export type ProjectionEvent = {
   entryId: string
@@ -25,17 +26,17 @@ export type ProjectionEvent = {
 
 export type Projection = {
   events: ProjectionEvent[]
-  series: number[] // length horizonDays + 1; series[0] = anchor.balance
+  series: number[] // length horizonDays + 1; series[0] = snapshot.balance
 }
 
 export function project(
-  anchor: Pick<Anchor, 'balance' | 'asOf'>,
+  snapshot: Pick<BalanceSnapshot, 'balance' | 'asOf'>,
   entries: Entry[],
   horizonDays: number,
 ): Projection {
   if (horizonDays < 0) throw new Error('horizonDays must be >= 0')
 
-  const asOf = Temporal.PlainDate.from(anchor.asOf)
+  const asOf = Temporal.PlainDate.from(snapshot.asOf)
   const horizonEnd = asOf.add({ days: horizonDays })
 
   const events: ProjectionEvent[] = []
@@ -63,8 +64,8 @@ export function project(
   })
 
   const series: number[] = new Array(horizonDays + 1)
-  series[0] = anchor.balance
-  let running = anchor.balance
+  series[0] = snapshot.balance
+  let running = snapshot.balance
   let ei = 0
   for (let day = 1; day <= horizonDays; day++) {
     while (ei < events.length && events[ei].dayIndex === day) {

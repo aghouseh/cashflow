@@ -1,24 +1,27 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Temporal } from '@js-temporal/polyfill'
-import { readAnchor } from '../lib/data/anchor'
+import { readLatestSnapshot } from '../lib/data/snapshot'
 import { listEntries } from '../lib/data/entry'
 import { initDb } from '../lib/db/init'
 import { project } from '../lib/projection'
-import { requireAnchor } from '../lib/route-guards'
+import { requireSnapshot } from '../lib/route-guards'
 
 const HORIZON_DAYS = 90
 
 export const Route = createFileRoute('/')({
-  beforeLoad: requireAnchor,
+  beforeLoad: requireSnapshot,
   loader: async () => {
     // SSR/prerender has no OPFS — return a sentinel and let the client re-run.
     if (typeof window === 'undefined') return null
     await initDb()
-    const [anchor, entries] = await Promise.all([readAnchor(), listEntries()])
-    if (!anchor) throw new Error('anchor missing after requireAnchor')
-    const projection = project(anchor, entries, HORIZON_DAYS)
-    return { anchor, entries, projection }
+    const [snapshot, entries] = await Promise.all([
+      readLatestSnapshot(),
+      listEntries(),
+    ])
+    if (!snapshot) throw new Error('snapshot missing after requireSnapshot')
+    const projection = project(snapshot, entries, HORIZON_DAYS)
+    return { snapshot, entries, projection }
   },
   component: BalancePage,
 })
@@ -35,10 +38,10 @@ function BalancePage() {
     )
   }
 
-  const { anchor, entries, projection } = data
+  const { snapshot, entries, projection } = data
   const { series, events } = projection
 
-  const asOf = Temporal.PlainDate.from(anchor.asOf)
+  const asOf = Temporal.PlainDate.from(snapshot.asOf)
   const scrubDate = asOf.add({ days: scrubOffset })
   const balanceNow = series[0]
   const balanceAtScrub = series[scrubOffset]
@@ -61,7 +64,7 @@ function BalancePage() {
           <p className="display mt-2">{USD.format(balanceAtScrub)}</p>
           <p className="mono mt-2 text-[12px] text-ink-3">
             {scrubOffset === 0
-              ? `As of ${anchor.asOf}${anchor.accountLabel ? ` · ${anchor.accountLabel}` : ''}`
+              ? `As of ${snapshot.asOf}${snapshot.accountLabel ? ` · ${snapshot.accountLabel}` : ''}`
               : `${netChange >= 0 ? '+' : ''}${USD.format(netChange)} vs today · day +${scrubOffset}`}
           </p>
         </div>

@@ -41,7 +41,7 @@ Cross-Origin-Embedder-Policy: require-corp
 Without these headers, the SQLite blob lives only in worker memory and **vanishes on refresh** — onboarding appears to "lose" everything. In dev, the `sqlocal/vite` plugin (registered in `vite.config.ts`) sets the headers automatically. In production, the host serving `dist/client/` must add them itself. Mini's Caddy block for `cashflow.houza.org` includes both.
 
 Tables:
-- `anchor` — singleton row (id = `'singleton'`). Holds the starting balance, the as-of date, and an optional account label.
+- `balance_snapshot` — stream of observed balances. One row per civil date (`as_of` UNIQUE); re-writing the same date upserts that row. The projection engine treats the most recent snapshot (`MAX(as_of) <= today`) as its origin. Past snapshots stay around for audit + future drift visualization.
 - `entry` — one row per recurring or one-off cashflow item. Recurrence stored as RFC 5545 RRULE string in `entry.rrule` (null = one-time at `entry.start_date`). `kind` is `'IN' | 'OUT'`.
 - `tag` — free-form labels.
 - `entry_tag` — join table.
@@ -96,17 +96,17 @@ The cadence picker UI in the mocks should be backed by a small constant table th
 `src/lib/projection.ts` (not yet written) is pure:
 
 ```
-(anchor: Anchor, entries: Entry[], horizonDays: number) =>
+(snapshot: BalanceSnapshot, entries: Entry[], horizonDays: number) =>
   { events: { entryId, date, amount, kind }[], series: number[] }
 ```
 
 Steps:
-1. For each `entry`, expand `rrule.between(anchor.asOf, anchor.asOf + horizonDays)` → list of dates.
+1. For each `entry`, expand `rrule.between(snapshot.asOf, snapshot.asOf + horizonDays)` → list of dates.
 2. Multiply by `amount * (kind === 'IN' ? 1 : -1)` → signed events.
 3. Sort events by date.
-4. Accumulate from `anchor.balance` → `series[i]` for each day in horizon.
+4. Accumulate from `snapshot.balance` → `series[i]` for each day in horizon.
 
-Memoize aggressively. Recompute only when anchor or entries change. The `scrubOffsetDays` state (single integer) reads from `series` and is the global source of truth for "viewing date".
+Memoize aggressively. Recompute only when snapshot or entries change. The `scrubOffsetDays` state (single integer) reads from `series` and is the global source of truth for "viewing date".
 
 Conversion at the rrule.js boundary: rrule returns native `Date`. Convert with `Temporal.PlainDate.from(d.toISOString().slice(0, 10))`.
 
@@ -123,13 +123,13 @@ scenarios.tsx       Stub — out of scope for v1
 onboarding.tsx      First-run flow (not yet wired)
 ```
 
-Root loader gate: if `anchor` row is missing, redirect to `/onboarding`. If vault mode is `locked`, render unlock screen instead of route content.
+Root loader gate: if no `balance_snapshot` row exists, redirect to `/onboarding`. If vault mode is `locked`, render unlock screen instead of route content.
 
 ## Onboarding
 
 Three steps, all rendered in `/onboarding`:
 
-1. **Anchor** (required) — current balance + as-of date + optional account label.
+1. **Balance** (required) — current balance + as-of date + optional account label. Writes the first `balance_snapshot` row.
 2. **Recurring income** (skippable) — add one or more income entries.
 3. **Recurring expense** (skippable) — add one or more expense entries.
 

@@ -1,20 +1,20 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useDbReady } from '../lib/db/ready'
-import { writeAnchor } from '../lib/data/anchor'
+import { writeSnapshot } from '../lib/data/snapshot'
 import { createEntry, updateEntry } from '../lib/data/entry'
 import { CADENCES, type CadenceKey, findCadence } from '../lib/cadence'
 
-import { redirectIfAnchored } from '../lib/route-guards'
+import { redirectIfSnapshotted } from '../lib/route-guards'
 
 export const Route = createFileRoute('/onboarding')({
-  beforeLoad: redirectIfAnchored,
+  beforeLoad: redirectIfSnapshotted,
   component: OnboardingPage,
 })
 
-type Step = 'anchor' | 'income' | 'expense'
+type Step = 'snapshot' | 'income' | 'expense'
 
-type AnchorDraft = {
+type SnapshotDraft = {
   balance: string
   asOf: string
   label: string
@@ -39,9 +39,9 @@ const emptyEntryDraft = (): EntryDraft => ({
 function OnboardingPage() {
   const ready = useDbReady()
   const navigate = useNavigate()
-  const [step, setStep] = useState<Step>('anchor')
+  const [step, setStep] = useState<Step>('snapshot')
 
-  const [anchorDraft, setAnchorDraft] = useState<AnchorDraft>({
+  const [snapshotDraft, setSnapshotDraft] = useState<SnapshotDraft>({
     balance: '',
     asOf: today(),
     label: '',
@@ -56,23 +56,23 @@ function OnboardingPage() {
   }
 
   function next() {
-    if (step === 'anchor') setStep('income')
+    if (step === 'snapshot') setStep('income')
     else if (step === 'income') setStep('expense')
     else navigate({ to: '/' })
   }
 
   function back() {
     if (step === 'expense') setStep('income')
-    else if (step === 'income') setStep('anchor')
+    else if (step === 'income') setStep('snapshot')
   }
 
   return (
     <div className="mx-auto mt-8 flex max-w-130 flex-col gap-4">
       <StepPip step={step} />
-      {step === 'anchor' && (
-        <AnchorStep
-          draft={anchorDraft}
-          onDraftChange={setAnchorDraft}
+      {step === 'snapshot' && (
+        <SnapshotStep
+          draft={snapshotDraft}
+          onDraftChange={setSnapshotDraft}
           onDone={next}
         />
       )}
@@ -105,7 +105,7 @@ function OnboardingPage() {
 }
 
 const STEPS: ReadonlyArray<{ key: Step; label: string }> = [
-  { key: 'anchor', label: 'Anchor' },
+  { key: 'snapshot', label: 'Balance' },
   { key: 'income', label: 'Income' },
   { key: 'expense', label: 'Expenses' },
 ]
@@ -130,13 +130,13 @@ function StepPip({ step }: { step: Step }) {
   )
 }
 
-function AnchorStep({
+function SnapshotStep({
   draft,
   onDraftChange,
   onDone,
 }: {
-  draft: AnchorDraft
-  onDraftChange: (next: AnchorDraft) => void
+  draft: SnapshotDraft
+  onDraftChange: (next: SnapshotDraft) => void
   onDone: () => void
 }) {
   const [busy, setBusy] = useState(false)
@@ -151,14 +151,14 @@ function AnchorStep({
     setBusy(true)
     setError(null)
     try {
-      await writeAnchor({
+      await writeSnapshot({
         balance: amount,
         asOf: draft.asOf,
         accountLabel: draft.label.trim() || null,
       })
       onDone()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save anchor')
+      setError(err instanceof Error ? err.message : 'Failed to save balance')
       setBusy(false)
     }
   }
