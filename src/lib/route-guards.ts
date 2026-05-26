@@ -7,6 +7,8 @@ import { initDb } from './db/init'
 // we SELECT.
 
 export async function requireAnchor(): Promise<void> {
+  // SSR/prerender has no OPFS — skip the check, let client-side rerun handle it.
+  if (typeof window === 'undefined') return
   await initDb()
   const existing = await readAnchor()
   if (!existing) {
@@ -15,6 +17,7 @@ export async function requireAnchor(): Promise<void> {
 }
 
 export async function redirectIfAnchored(): Promise<void> {
+  if (typeof window === 'undefined') return
   await initDb()
   const existing = await readAnchor()
   if (existing) {
