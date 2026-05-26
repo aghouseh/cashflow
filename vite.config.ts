@@ -9,6 +9,12 @@ import sqlocal from 'sqlocal/vite'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  // rrule v2 has no `exports` field and ships CJS as `main` + ESM as `module`.
+  // Bundlers see ESM (named exports work); Node ESM at runtime sees CJS
+  // (only `default` works), so a plain `import { rrulestr } from 'rrule'`
+  // fails in the SSR/prerender bundle. Forcing rrule to bundle into the
+  // server output makes the bundler the single resolver — named imports work.
+  ssr: { noExternal: ['rrule'] },
   // Listen on all interfaces so LAN devices can hit the dev server at
   // http://mini.agh:3000/. allowedHosts is required on Vite 6+ for any
   // non-localhost Host header.
