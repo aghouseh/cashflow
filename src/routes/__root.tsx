@@ -1,4 +1,4 @@
-import { HeadContent, Scripts, createRootRoute, Outlet } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import TopBar from '../components/TopBar'
@@ -27,7 +27,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <TopBar />
         <main className="mx-auto max-w-270 px-6 py-6">
           {children}
-          <Outlet />
         </main>
         <TanStackDevtools
           config={{ position: 'bottom-right' }}
