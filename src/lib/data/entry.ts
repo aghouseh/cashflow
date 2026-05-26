@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import { db } from '../db/client'
 import { entry, type Entry } from '../db/schema'
 import { newId } from '../id'
@@ -30,6 +31,23 @@ export async function createEntry(input: EntryInput): Promise<Entry> {
   await db.insert(entry).values(row)
   await flush()
   return row
+}
+
+export async function updateEntry(id: string, input: EntryInput): Promise<void> {
+  await db
+    .update(entry)
+    .set({
+      kind: input.kind,
+      name: input.name,
+      amount: input.amount,
+      currency: input.currency ?? 'USD',
+      startDate: input.startDate,
+      endDate: input.endDate ?? null,
+      rrule: input.rrule ?? null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(entry.id, id))
+  await flush()
 }
 
 export async function listEntries(): Promise<Entry[]> {

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useDbReady } from '../lib/db/ready'
 import { writeAnchor } from '../lib/data/anchor'
-import { createEntry } from '../lib/data/entry'
+import { createEntry, updateEntry } from '../lib/data/entry'
 import { CADENCES, type CadenceKey, findCadence } from '../lib/cadence'
 
 import { redirectIfAnchored } from '../lib/route-guards'
@@ -14,10 +14,42 @@ export const Route = createFileRoute('/onboarding')({
 
 type Step = 'anchor' | 'income' | 'expense'
 
+type AnchorDraft = {
+  balance: string
+  asOf: string
+  label: string
+}
+
+type EntryDraft = {
+  name: string
+  amount: string
+  startDate: string
+  cadence: CadenceKey
+}
+
+const today = () => new Date().toISOString().slice(0, 10)
+
+const emptyEntryDraft = (): EntryDraft => ({
+  name: '',
+  amount: '',
+  startDate: today(),
+  cadence: 'monthly',
+})
+
 function OnboardingPage() {
   const ready = useDbReady()
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>('anchor')
+
+  const [anchorDraft, setAnchorDraft] = useState<AnchorDraft>({
+    balance: '',
+    asOf: today(),
+    label: '',
+  })
+  const [incomeDraft, setIncomeDraft] = useState<EntryDraft>(emptyEntryDraft())
+  const [expenseDraft, setExpenseDraft] = useState<EntryDraft>(emptyEntryDraft())
+  const [incomeId, setIncomeId] = useState<string | null>(null)
+  const [expenseId, setExpenseId] = useState<string | null>(null)
 
   if (!ready) {
     return <p className="micro mt-12 text-center">Initializing…</p>
@@ -29,12 +61,45 @@ function OnboardingPage() {
     else navigate({ to: '/' })
   }
 
+  function back() {
+    if (step === 'expense') setStep('income')
+    else if (step === 'income') setStep('anchor')
+  }
+
   return (
     <div className="mx-auto mt-8 flex max-w-130 flex-col gap-4">
       <StepPip step={step} />
-      {step === 'anchor' && <AnchorStep onDone={next} />}
-      {step === 'income' && <EntryStep kind="IN" onDone={next} onSkip={next} />}
-      {step === 'expense' && <EntryStep kind="OUT" onDone={next} onSkip={next} />}
+      {step === 'anchor' && (
+        <AnchorStep
+          draft={anchorDraft}
+          onDraftChange={setAnchorDraft}
+          onDone={next}
+        />
+      )}
+      {step === 'income' && (
+        <EntryStep
+          kind="IN"
+          draft={incomeDraft}
+          onDraftChange={setIncomeDraft}
+          entryId={incomeId}
+          onEntryIdChange={setIncomeId}
+          onDone={next}
+          onSkip={next}
+          onBack={back}
+        />
+      )}
+      {step === 'expense' && (
+        <EntryStep
+          kind="OUT"
+          draft={expenseDraft}
+          onDraftChange={setExpenseDraft}
+          entryId={expenseId}
+          onEntryIdChange={setExpenseId}
+          onDone={next}
+          onSkip={next}
+          onBack={back}
+        />
+      )}
     </div>
   )
 }
@@ -65,16 +130,20 @@ function StepPip({ step }: { step: Step }) {
   )
 }
 
-function AnchorStep({ onDone }: { onDone: () => void }) {
-  const today = new Date().toISOString().slice(0, 10)
-  const [balance, setBalance] = useState('')
-  const [asOf, setAsOf] = useState(today)
-  const [label, setLabel] = useState('')
+function AnchorStep({
+  draft,
+  onDraftChange,
+  onDone,
+}: {
+  draft: AnchorDraft
+  onDraftChange: (next: AnchorDraft) => void
+  onDone: () => void
+}) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const amount = Number(balance)
-  const canSubmit = !Number.isNaN(amount) && balance.trim() !== '' && !busy
+  const amount = Number(draft.balance)
+  const canSubmit = !Number.isNaN(amount) && draft.balance.trim() !== '' && !busy
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -84,8 +153,8 @@ function AnchorStep({ onDone }: { onDone: () => void }) {
     try {
       await writeAnchor({
         balance: amount,
-        asOf,
-        accountLabel: label.trim() || null,
+        asOf: draft.asOf,
+        accountLabel: draft.label.trim() || null,
       })
       onDone()
     } catch (err) {
@@ -112,8 +181,8 @@ function AnchorStep({ onDone }: { onDone: () => void }) {
             type="number"
             inputMode="decimal"
             step="0.01"
-            value={balance}
-            onChange={(e) => setBalance(e.target.value)}
+            value={draft.balance}
+            onChange={(e) => onDraftChange({ ...draft, balance: e.target.value })}
             placeholder="0.00"
             className="input pl-7 text-right tabular-nums"
             autoFocus
@@ -124,8 +193,8 @@ function AnchorStep({ onDone }: { onDone: () => void }) {
       <Field label="As of">
         <input
           type="date"
-          value={asOf}
-          onChange={(e) => setAsOf(e.target.value)}
+          value={draft.asOf}
+          onChange={(e) => onDraftChange({ ...draft, asOf: e.target.value })}
           className="input"
         />
       </Field>
@@ -133,8 +202,8 @@ function AnchorStep({ onDone }: { onDone: () => void }) {
       <Field label="Account label" hint="Optional. Helpful if you'll add other accounts later.">
         <input
           type="text"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          value={draft.label}
+          onChange={(e) => onDraftChange({ ...draft, label: e.target.value })}
           placeholder="e.g. Chase · 4820"
           className="input"
         />
@@ -157,24 +226,29 @@ function AnchorStep({ onDone }: { onDone: () => void }) {
 
 function EntryStep({
   kind,
+  draft,
+  onDraftChange,
+  entryId,
+  onEntryIdChange,
   onDone,
   onSkip,
+  onBack,
 }: {
   kind: 'IN' | 'OUT'
+  draft: EntryDraft
+  onDraftChange: (next: EntryDraft) => void
+  entryId: string | null
+  onEntryIdChange: (id: string) => void
   onDone: () => void
   onSkip: () => void
+  onBack: () => void
 }) {
-  const today = new Date().toISOString().slice(0, 10)
-  const [name, setName] = useState('')
-  const [amount, setAmount] = useState('')
-  const [startDate, setStartDate] = useState(today)
-  const [cadence, setCadence] = useState<CadenceKey>('monthly')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const amountNum = Number(amount)
+  const amountNum = Number(draft.amount)
   const canSubmit =
-    name.trim() !== '' && !Number.isNaN(amountNum) && amount.trim() !== '' && !busy
+    draft.name.trim() !== '' && !Number.isNaN(amountNum) && draft.amount.trim() !== '' && !busy
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -182,13 +256,19 @@ function EntryStep({
     setBusy(true)
     setError(null)
     try {
-      await createEntry({
+      const payload = {
         kind,
-        name: name.trim(),
+        name: draft.name.trim(),
         amount: amountNum,
-        startDate,
-        rrule: findCadence(cadence).rrule,
-      })
+        startDate: draft.startDate,
+        rrule: findCadence(draft.cadence).rrule,
+      }
+      if (entryId) {
+        await updateEntry(entryId, payload)
+      } else {
+        const row = await createEntry(payload)
+        onEntryIdChange(row.id)
+      }
       onDone()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save entry')
@@ -199,8 +279,8 @@ function EntryStep({
   const heading = kind === 'IN' ? 'Add a recurring income' : 'Add a recurring expense'
   const blurb =
     kind === 'IN'
-      ? 'Paychecks, transfers in, anything you expect to land regularly.'
-      : 'Rent, subscriptions, card payments — anything that leaves on a schedule.'
+      ? 'Paychecks, transfers in, anything you expect to land regularly. You can add more later from the Entries page.'
+      : 'Rent, subscriptions, card payments — anything that leaves on a schedule. You can add more later from the Entries page.'
   const placeholder = kind === 'IN' ? 'e.g. Paycheck' : 'e.g. Rent'
 
   return (
@@ -213,8 +293,8 @@ function EntryStep({
       <Field label="Name">
         <input
           type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={draft.name}
+          onChange={(e) => onDraftChange({ ...draft, name: e.target.value })}
           placeholder={placeholder}
           className="input"
           autoFocus
@@ -228,8 +308,8 @@ function EntryStep({
             type="number"
             inputMode="decimal"
             step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            value={draft.amount}
+            onChange={(e) => onDraftChange({ ...draft, amount: e.target.value })}
             placeholder="0.00"
             className="input pl-7 text-right tabular-nums"
           />
@@ -242,9 +322,9 @@ function EntryStep({
             <button
               key={c.key}
               type="button"
-              onClick={() => setCadence(c.key)}
+              onClick={() => onDraftChange({ ...draft, cadence: c.key })}
               className={`rounded-chip border px-3 py-1 text-[12px] transition-colors ${
-                cadence === c.key
+                draft.cadence === c.key
                   ? 'border-ink bg-ink text-card'
                   : 'border-line-2 text-ink-2 hover:text-ink'
               }`}
@@ -255,11 +335,11 @@ function EntryStep({
         </div>
       </Field>
 
-      <Field label={cadence === 'one-time' ? 'Date' : 'Starting'}>
+      <Field label={draft.cadence === 'one-time' ? 'Date' : 'Starting'}>
         <input
           type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
+          value={draft.startDate}
+          onChange={(e) => onDraftChange({ ...draft, startDate: e.target.value })}
           className="input"
         />
       </Field>
@@ -269,18 +349,27 @@ function EntryStep({
       <footer className="mt-2 flex items-center justify-between">
         <button
           type="button"
-          onClick={onSkip}
+          onClick={onBack}
           className="rounded-field px-3 py-1.5 text-[13px] text-ink-2 hover:text-ink"
         >
-          Skip this step
+          ← Back
         </button>
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="rounded-field bg-ink px-4 py-1.5 text-[13px] text-card disabled:opacity-40"
-        >
-          {busy ? 'Saving…' : 'Save & continue →'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onSkip}
+            className="rounded-field px-3 py-1.5 text-[13px] text-ink-2 hover:text-ink"
+          >
+            Skip this step
+          </button>
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="rounded-field bg-ink px-4 py-1.5 text-[13px] text-card disabled:opacity-40"
+          >
+            {busy ? 'Saving…' : entryId ? 'Update & continue →' : 'Save & continue →'}
+          </button>
+        </div>
       </footer>
     </form>
   )
