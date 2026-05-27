@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Temporal } from '@js-temporal/polyfill'
+import ChartLine from '../components/ChartLine'
 import { readLatestSnapshot } from '../lib/data/snapshot'
 import { listEntries } from '../lib/data/entry'
 import { initDb } from '../lib/db/init'
@@ -77,14 +78,12 @@ function BalancePage() {
 
       <section className="card">
         <p className="micro mb-3">Projection · next {HORIZON_DAYS} days</p>
-        <Sparkline series={series} scrubOffset={scrubOffset} />
-        <input
-          type="range"
-          min={0}
-          max={HORIZON_DAYS}
-          value={scrubOffset}
-          onChange={(e) => setScrubOffset(Number(e.target.value))}
-          className="mt-3 w-full accent-amber-500"
+        <ChartLine
+          series={series}
+          events={events}
+          asOf={snapshot.asOf}
+          scrubOffset={scrubOffset}
+          onScrubChange={setScrubOffset}
         />
       </section>
 
@@ -132,37 +131,3 @@ function BalancePage() {
   )
 }
 
-function Sparkline({ series, scrubOffset }: { series: number[]; scrubOffset: number }) {
-  const width = 800
-  const height = 200
-  const padX = 8
-  const padY = 8
-  const max = Math.max(...series)
-  const min = Math.min(...series)
-  const range = max - min || 1
-  const stepX = (width - padX * 2) / (series.length - 1)
-  const yFor = (v: number) => padY + (1 - (v - min) / range) * (height - padY * 2)
-  const path = series
-    .map((v, i) => `${i === 0 ? 'M' : 'L'} ${padX + i * stepX} ${yFor(v)}`)
-    .join(' ')
-  const scrubX = padX + scrubOffset * stepX
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      className="h-48 w-full rounded-field border border-line-2 bg-card-2"
-    >
-      <path d={path} fill="none" stroke="currentColor" strokeWidth={2} className="text-ink-2" />
-      <line
-        x1={scrubX}
-        y1={padY}
-        x2={scrubX}
-        y2={height - padY}
-        stroke="currentColor"
-        strokeWidth={1.5}
-        className="text-amber-500"
-      />
-      <circle cx={scrubX} cy={yFor(series[scrubOffset])} r={4} className="fill-amber-500" />
-    </svg>
-  )
-}

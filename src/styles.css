@@ -134,3 +134,25 @@ body {
 .input::placeholder {
   color: var(--color-ink-3);
 }
+
+/* ChartLine scrub tooltip — HTML popover anchored to a tracker div placed at
+   the scrub dot inside the chart wrapper. Lives in the browser's top layer
+   when open, so no z-index / layout pressure on the SVG or its ancestors. */
+.chart-tooltip {
+  position: absolute;
+  position-anchor: --chart-scrub;
+  bottom: anchor(top);
+  left: anchor(center);
+  translate: -50% 0;
+  margin: 0 0 8px 0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--color-ink);
+  color: var(--color-card);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  /* Flip below the dot + stay inside the viewport if there's no room above. */
+  position-try-fallbacks: flip-block, flip-inline;
+}
