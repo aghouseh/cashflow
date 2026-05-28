@@ -1,14 +1,19 @@
 // Scrub-driven projection chart. Pure-SVG, no chart library.
 //
-// Drag anywhere on the chart to scrub. The amber marker (line + ring + bottom
-// diamond) tracks the scrub day. A dashed NOW line marks day 0. Event dots
+// Two gestures on the chart:
+//   - Tap (pointer down + up at ~same position): move scrub to that x.
+//   - Horizontal swipe (pointer down + drag > swipe threshold): page forward
+//     or back. Swipe-left advances to the next window, swipe-right goes back.
+//
+// The amber marker (line + ring + bottom diamond) tracks the scrub day.
+// A dashed NOW line marks day 0 when it falls inside the window. Event dots
 // (sage = IN, terracotta = OUT) sit on the curve at each event day.
 //
-// Coordinate model: SVG `viewBox` is fixed (`VBW`×`VBH`); the rendered size is
-// scaled by the container. Pointer events compute the day index from the
-// element's bounding rect, not the viewBox, so drag works at any rendered size.
+// Coordinate model: SVG `viewBox` is fixed (`VBW`×`VBH`); the rendered size
+// is scaled by the container. Pointer events compute the day index from the
+// element's bounding rect, not the viewBox, so gestures work at any size.
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Temporal } from '@js-temporal/polyfill'
 import type { ProjectionEvent } from '#/lib/projection'
 
@@ -39,7 +44,15 @@ type Props = {
   dayOffset?: number
   scrubOffset: number // 0..series.length-1, within the displayed window
   onScrubChange: (offset: number) => void
+  // Called on a horizontal swipe gesture. +1 = next window, -1 = previous.
+  // Receiver is responsible for clamping to valid range (and may no-op).
+  onPageRequest?: (delta: number) => void
 }
+
+// A pointer travel of this many pixels (or this fraction of the chart's
+// rendered width, whichever is smaller) is treated as a swipe, not a tap.
+const SWIPE_PX = 60
+const SWIPE_FRACTION = 0.1
 
 export default function ChartLine({
   series,
@@ -48,8 +61,13 @@ export default function ChartLine({
   dayOffset = 0,
   scrubOffset,
   onScrubChange,
+  onPageRequest,
 }: Props) {
   const [active, setActive] = useState(false)
+  const [isDown, setIsDown] = useState(false)
+  // Pointer-down origin. Ref (not state) — we only read it on release; updating
+  // state on every pointerdown would trigger unnecessary re-renders.
+  const downRef = useRef<{ x: number; y: number } | null>(null)
   const lastIdx = series.length - 1
   const xOf = (day: number) => PAD_L + (INNER_W * day) / lastIdx
 
@@ -96,18 +114,49 @@ export default function ChartLine({
     .filter((e) => e.dayIndex >= dayOffset && e.dayIndex <= dayOffset + lastIdx)
     .map((e) => ({ ...e, localDay: e.dayIndex - dayOffset }))
 
-  function handlePointer(e: React.PointerEvent<SVGSVGElement>) {
-    // Only respond while a button is pressed (drag), not on bare hover.
-    if (e.buttons !== 1) return
-    const rect = e.currentTarget.getBoundingClientRect()
+  function scrubToClientX(clientX: number, rect: DOMRect) {
     // Convert client x to viewBox x first, then to day index, so scrub is
     // accurate regardless of how the SVG is scaled into its container.
-    const xInView = ((e.clientX - rect.left) / rect.width) * VBW
+    const xInView = ((clientX - rect.left) / rect.width) * VBW
     const innerX = xInView - PAD_L
     const ratio = innerX / INNER_W
     const day = Math.round(ratio * lastIdx)
     const clamped = Math.max(0, Math.min(lastIdx, day))
     if (clamped !== scrubOffset) onScrubChange(clamped)
+  }
+
+  function onPointerDownChart(e: React.PointerEvent<SVGSVGElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setActive(true)
+    setIsDown(true)
+    downRef.current = { x: e.clientX, y: e.clientY }
+  }
+
+  function onPointerUpChart(e: React.PointerEvent<SVGSVGElement>) {
+    e.currentTarget.releasePointerCapture(e.pointerId)
+    setIsDown(false)
+    const down = downRef.current
+    downRef.current = null
+    if (!down) return
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const deltaX = e.clientX - down.x
+    const deltaY = e.clientY - down.y
+    const swipeThreshold = Math.min(SWIPE_PX, rect.width * SWIPE_FRACTION)
+
+    // Treat as swipe when horizontal motion clears the threshold AND the
+    // gesture is meaningfully more horizontal than vertical (avoids
+    // hijacking a scroll attempt that happened to drift sideways).
+    const isSwipe =
+      Math.abs(deltaX) > swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.5
+
+    if (isSwipe && onPageRequest) {
+      // Swipe-left (negative deltaX) advances forward; swipe-right goes back.
+      onPageRequest(deltaX < 0 ? 1 : -1)
+      return
+    }
+    // Otherwise it's a tap (or small drag) — scrub to the release position.
+    scrubToClientX(e.clientX, rect)
   }
 
   return (
@@ -136,20 +185,20 @@ export default function ChartLine({
 
       <svg
         viewBox={`0 0 ${VBW} ${VBH}`}
-        className="block w-full cursor-ew-resize select-none"
+        className={`block w-full select-none ${isDown ? 'cursor-grabbing' : 'cursor-grab'}`}
         // Lock the rendered container to the viewBox aspect so circles stay
         // round — `preserveAspectRatio="none"` was stretching them to ovals.
         style={{ aspectRatio: `${VBW} / ${VBH}`, touchAction: 'none' }}
         onPointerEnter={() => setActive(true)}
         onPointerLeave={() => setActive(false)}
-        onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId)
-          setActive(true)
-          handlePointer(e)
+        onPointerDown={onPointerDownChart}
+        onPointerUp={onPointerUpChart}
+        onPointerCancel={(e) => {
+          e.currentTarget.releasePointerCapture(e.pointerId)
+          downRef.current = null
+          setIsDown(false)
+          setActive(false)
         }}
-        onPointerMove={handlePointer}
-        onPointerUp={(e) => e.currentTarget.releasePointerCapture(e.pointerId)}
-        onPointerCancel={() => setActive(false)}
       >
       <defs>
         <linearGradient id="chartline-area" x1="0" x2="0" y1="0" y2="1">

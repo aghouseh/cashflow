@@ -184,6 +184,7 @@ function BalancePage() {
           dayOffset={windowStart}
           scrubOffset={clampedScrub}
           onScrubChange={setScrubOffset}
+          onPageRequest={changePage}
         />
       </section>
 
