@@ -164,7 +164,11 @@ function SnapshotStep({
   }
 
   return (
-    <form onSubmit={onSubmit} className="card flex flex-col gap-4">
+    <form
+      onSubmit={onSubmit}
+      className="card flex flex-col gap-4"
+      autoComplete="off"
+    >
       <header>
         <h1 className="text-[20px] font-medium tracking-tight">
           What's in the account today?
@@ -178,9 +182,15 @@ function SnapshotStep({
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 mono text-ink-3">$</span>
           <input
-            type="number"
+            // `type="text"` + `inputMode="decimal"` is the standard money-input
+            // pattern: numeric keyboard on mobile, no native spinner buttons,
+            // no locale-dependent stepping behavior of `type="number"`.
+            type="text"
             inputMode="decimal"
-            step="0.01"
+            name="cashflow-snapshot-balance"
+            autoComplete="off"
+            data-1p-ignore
+            data-lpignore="true"
             value={draft.balance}
             onChange={(e) => onDraftChange({ ...draft, balance: e.target.value })}
             placeholder="0.00"
@@ -193,6 +203,10 @@ function SnapshotStep({
       <Field label="As of">
         <input
           type="date"
+          name="cashflow-snapshot-as-of"
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
           value={draft.asOf}
           onChange={(e) => onDraftChange({ ...draft, asOf: e.target.value })}
           className="input"
@@ -202,6 +216,10 @@ function SnapshotStep({
       <Field label="Account label" hint="Optional. Helpful if you'll add other accounts later.">
         <input
           type="text"
+          name="cashflow-snapshot-account-label"
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
           value={draft.label}
           onChange={(e) => onDraftChange({ ...draft, label: e.target.value })}
           placeholder="e.g. Chase · 4820"
@@ -282,9 +300,14 @@ function EntryStep({
       ? 'Paychecks, transfers in, anything you expect to land regularly. You can add more later from the Entries page.'
       : 'Rent, subscriptions, card payments — anything that leaves on a schedule. You can add more later from the Entries page.'
   const placeholder = kind === 'IN' ? 'e.g. Paycheck' : 'e.g. Rent'
+  const nameSlot = kind === 'IN' ? 'income' : 'expense'
 
   return (
-    <form onSubmit={onSubmit} className="card flex flex-col gap-4">
+    <form
+      onSubmit={onSubmit}
+      className="card flex flex-col gap-4"
+      autoComplete="off"
+    >
       <header>
         <h1 className="text-[20px] font-medium tracking-tight">{heading}</h1>
         <p className="mt-1 text-[12px] text-ink-2">{blurb}</p>
@@ -293,6 +316,10 @@ function EntryStep({
       <Field label="Name">
         <input
           type="text"
+          name={`cashflow-entry-${nameSlot}-name`}
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
           value={draft.name}
           onChange={(e) => onDraftChange({ ...draft, name: e.target.value })}
           placeholder={placeholder}
@@ -305,9 +332,12 @@ function EntryStep({
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 mono text-ink-3">$</span>
           <input
-            type="number"
+            type="text"
             inputMode="decimal"
-            step="0.01"
+            name={`cashflow-entry-${nameSlot}-amount`}
+            autoComplete="off"
+            data-1p-ignore
+            data-lpignore="true"
             value={draft.amount}
             onChange={(e) => onDraftChange({ ...draft, amount: e.target.value })}
             placeholder="0.00"
@@ -338,6 +368,10 @@ function EntryStep({
       <Field label={draft.cadence === 'one-time' ? 'Date' : 'Starting'}>
         <input
           type="date"
+          name={`cashflow-entry-${nameSlot}-start-date`}
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
           value={draft.startDate}
           onChange={(e) => onDraftChange({ ...draft, startDate: e.target.value })}
           className="input"
