@@ -138,6 +138,15 @@ body {
 /* ChartLine scrub tooltip — HTML popover anchored to a tracker div placed at
    the scrub dot inside the chart wrapper. Lives in the browser's top layer
    when open, so no z-index / layout pressure on the SVG or its ancestors. */
+/* Hide the scrollbar on the scroll-snap chart viewport — the scroll is
+   gesture/arrow driven, the bar would just be visual noise. */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
 .chart-tooltip {
   position: absolute;
   position-anchor: --chart-scrub;

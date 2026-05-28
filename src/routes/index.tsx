@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Temporal } from '@js-temporal/polyfill'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import ChartLine from '../components/ChartLine'
+import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
+import ChartStrip, { type ChartWindow } from '../components/ChartStrip'
 import { readLatestSnapshot } from '../lib/data/snapshot'
 import { listEntries } from '../lib/data/entry'
 import { initDb } from '../lib/db/init'
@@ -55,6 +55,13 @@ function BalancePage() {
   const [pageIndex, setPageIndex] = useState(0)
   const initialScrub = Math.floor(windowDaysFor(DEFAULT_WINDOW) / 2)
   const [scrubOffset, setScrubOffset] = useState(initialScrub)
+  // Shared with ChartStrip so the arrow controls drive the same scroll snap.
+  const chartScrollRef = useRef<HTMLDivElement | null>(null)
+
+  function pageByArrow(delta: 1 | -1) {
+    const el = chartScrollRef.current
+    if (el) el.scrollBy({ left: delta * el.clientWidth, behavior: 'smooth' })
+  }
 
   if (!data) {
     return <div className="card text-[12px] text-ink-3">Loading…</div>
@@ -71,6 +78,21 @@ function BalancePage() {
   const windowSeries = fullSeries.slice(windowStart, windowStart + windowDays + 1)
   // Clamp scrub if user changed window and the old offset is now out of range.
   const clampedScrub = Math.min(scrubOffset, windowSeries.length - 1)
+
+  function buildWindow(pageOffset: number): ChartWindow | undefined {
+    const idx = pageIndex + pageOffset
+    if (idx < 0 || idx > maxPage) return undefined
+    const start = idx * windowDays
+    return {
+      series: fullSeries.slice(start, start + windowDays + 1),
+      events: fullEvents,
+      dayOffset: start,
+    }
+  }
+
+  const currentWindow = buildWindow(0)!
+  const prevWindow = buildWindow(-1)
+  const nextWindow = buildWindow(1)
 
   const asOf = Temporal.PlainDate.from(snapshot.asOf)
   const absoluteScrubDay = windowStart + clampedScrub
@@ -99,6 +121,11 @@ function BalancePage() {
     setWindowKey(next)
     setPageIndex(0)
     setScrubOffset(Math.floor(windowDaysFor(next) / 2))
+    // Page resets to 0 → current window is the first slide. Snap the scroll
+    // container back to the left after the new slides render.
+    requestAnimationFrame(() => {
+      if (chartScrollRef.current) chartScrollRef.current.scrollLeft = 0
+    })
   }
 
   function changePage(delta: number) {
@@ -107,6 +134,14 @@ function BalancePage() {
     setPageIndex(next)
     // Land in the middle of the new window so the tooltip stays visible.
     setScrubOffset(Math.floor(windowDays / 2))
+  }
+
+  function goToToday() {
+    setPageIndex(0)
+    setScrubOffset(0) // day 0 = today
+    requestAnimationFrame(() => {
+      if (chartScrollRef.current) chartScrollRef.current.scrollLeft = 0
+    })
   }
 
   const isToday = absoluteScrubDay === 0
@@ -156,7 +191,16 @@ function BalancePage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => changePage(-1)}
+              onClick={goToToday}
+              disabled={pageIndex === 0 && absoluteScrubDay === 0}
+              className="flex items-center gap-1.5 rounded-field border border-line-2 px-2.5 py-1 text-[11px] text-ink-2 transition-colors hover:text-ink disabled:opacity-30 disabled:hover:text-ink-2"
+            >
+              <RotateCcw size={12} />
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => pageByArrow(-1)}
               disabled={pageIndex === 0}
               aria-label="Previous window"
               className="rounded-field border border-line-2 p-1 text-ink-2 transition-colors hover:text-ink disabled:opacity-30 disabled:hover:text-ink-2"
@@ -168,7 +212,7 @@ function BalancePage() {
             </p>
             <button
               type="button"
-              onClick={() => changePage(1)}
+              onClick={() => pageByArrow(1)}
               disabled={pageIndex >= maxPage}
               aria-label="Next window"
               className="rounded-field border border-line-2 p-1 text-ink-2 transition-colors hover:text-ink disabled:opacity-30 disabled:hover:text-ink-2"
@@ -177,14 +221,15 @@ function BalancePage() {
             </button>
           </div>
         </div>
-        <ChartLine
-          series={windowSeries}
-          events={fullEvents}
+        <ChartStrip
           asOf={snapshot.asOf}
-          dayOffset={windowStart}
+          current={currentWindow}
+          prev={prevWindow}
+          next={nextWindow}
           scrubOffset={clampedScrub}
           onScrubChange={setScrubOffset}
-          onPageRequest={changePage}
+          onPageChange={changePage}
+          scrollRef={chartScrollRef}
         />
       </section>
 
