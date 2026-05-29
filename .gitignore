@@ -12,3 +12,6 @@ dist-ssr
 __unconfig*
 todos.json
 .claude/
+
+# Design handoff / mock bundles (reference only — not part of the app)
+mocks/

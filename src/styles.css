@@ -147,6 +147,68 @@ body {
   display: none; /* WebKit */
 }
 
+/* ── Ledger register ───────────────────────────────────────────────────── */
+.ld-grid {
+  display: grid;
+  grid-template-columns: 64px 26px 1fr 116px 128px;
+  align-items: center;
+  gap: 0 4px;
+}
+
+.ld-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.ld-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-line-2);
+  border-radius: 999px;
+  border: 3px solid var(--color-card);
+}
+.ld-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ld-fade-top {
+  background: linear-gradient(var(--color-card), transparent);
+}
+.ld-fade-bot {
+  background: linear-gradient(transparent, var(--color-card));
+}
+
+.ld-focus-diamond {
+  width: 7px;
+  height: 7px;
+  background: var(--color-amber);
+  transform: rotate(45deg);
+  margin-left: -3.5px;
+  flex: 0 0 auto;
+}
+.ld-focus-tag {
+  position: absolute;
+  right: 12px;
+  top: -10px;
+  font-size: 10.5px;
+  color: var(--color-amber-ink);
+  background: var(--color-amber-soft);
+  border: 1px solid var(--color-amber);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.ld-key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border: 1px solid var(--color-line-2);
+  border-radius: 4px;
+  background: var(--color-card-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-ink-2);
+}
+
 .chart-tooltip {
   position: absolute;
   position-anchor: --chart-scrub;
