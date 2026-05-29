@@ -38,6 +38,13 @@
   box-sizing: border-box;
 }
 
+/* Tailwind v4 preflight resets `margin: 0` on all elements, which overrides
+   the UA stylesheet's `margin: auto` that centers top-layer <dialog> elements
+   opened via showModal(). Without this, dialogs land at top-left. */
+dialog {
+  margin: auto;
+}
+
 html,
 body,
 #app {
@@ -208,6 +215,221 @@ body {
   font-size: 10px;
   color: var(--color-ink-2);
 }
+
+/* ── Locked / encrypted app-blocking gate ──────────────────────────────── */
+/* Translates design mock .lock-* (--m-*) to this app's --color-* tokens.   */
+
+.lock-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+/* The real app, sealed behind the lock. */
+.lock-content {
+  position: absolute;
+  inset: 0;
+}
+.lock-content.is-sealed {
+  filter: blur(18px) saturate(0.55) brightness(1.02);
+  transform: scale(1.06);
+  pointer-events: none;
+  user-select: none;
+}
+.lock-content.is-revealing {
+  animation: lock-reveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes lock-reveal {
+  from { filter: blur(18px) saturate(0.55); transform: scale(1.06); }
+  to   { filter: blur(0) saturate(1); transform: scale(1); }
+}
+
+.lock-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      120% 90% at 50% 22%,
+      color-mix(in oklch, var(--color-bg) 55%, transparent) 0%,
+      color-mix(in oklch, var(--color-bg) 86%, transparent) 60%,
+      var(--color-bg) 100%
+    );
+  z-index: 1;
+}
+.lock-scrim.fade-out { animation: lock-scrim-out 0.5s ease forwards; }
+@keyframes lock-scrim-out { to { opacity: 0; } }
+
+.lock-center {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+.lock-center.fade-out { animation: lock-scrim-out 0.4s ease forwards; pointer-events: none; }
+
+.lock-panel {
+  width: 380px;
+  max-width: 100%;
+  background: color-mix(in oklch, var(--color-card) 86%, transparent);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid color-mix(in oklch, var(--color-line-2) 80%, transparent);
+  border-radius: 18px;
+  box-shadow:
+    0 1px 0 color-mix(in oklch, #fff 60%, transparent) inset,
+    0 24px 60px -20px color-mix(in oklch, var(--color-ink) 22%, transparent),
+    0 4px 16px -8px color-mix(in oklch, var(--color-ink) 18%, transparent);
+  padding: 30px 30px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.lock-panel.compact { width: 100%; padding: 26px 22px 20px; border-radius: 16px; }
+.lock-panel.shake { animation: lock-shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes lock-shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
+
+.lock-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-amber-soft);
+  border: 1px solid color-mix(in oklch, var(--color-amber) 45%, transparent);
+  color: var(--color-amber-ink);
+}
+.lock-mark.unlocked {
+  background: var(--color-in-soft);
+  border-color: color-mix(in oklch, var(--color-in) 45%, transparent);
+  color: var(--color-in-ink);
+}
+
+.lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-line-2);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-card) 70%, transparent);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+  white-space: nowrap;
+}
+.lock-badge .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-amber);
+}
+
+/* passphrase field */
+.lock-field {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-line-2);
+  border-radius: 10px;
+  background: var(--color-card);
+  transition: border-color .12s, box-shadow .12s;
+}
+.lock-field:focus-within {
+  border-color: var(--color-ink);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-ink) 8%, transparent);
+}
+.lock-field.err { border-color: var(--color-out); }
+.lock-field.err:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-out) 12%, transparent);
+}
+
+.lock-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 12px 6px 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--color-ink);
+}
+.lock-input::placeholder { letter-spacing: normal; color: var(--color-ink-3); }
+
+.lock-eye {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  align-self: stretch;
+  border: none;
+  background: transparent;
+  color: var(--color-ink-3);
+  cursor: pointer;
+}
+.lock-eye:hover { color: var(--color-ink-2); }
+
+.lock-unlock {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-card);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background .12s, opacity .12s;
+}
+.lock-unlock:hover { background: #2d2c28; }
+.lock-unlock:disabled { opacity: 0.4; cursor: not-allowed; }
+.lock-unlock.ok { background: var(--color-in-ink); border-color: var(--color-in-ink); }
+
+.lock-msg {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  min-height: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lock-msg.err { color: var(--color-out-ink); }
+.lock-msg.warn { color: var(--color-amber-ink); }
+
+.lock-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ink-3);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.lock-link:hover { color: var(--color-ink-2); }
 
 .chart-tooltip {
   position: absolute;

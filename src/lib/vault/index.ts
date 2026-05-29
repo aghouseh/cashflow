@@ -63,7 +63,10 @@ export async function unlock(passphrase: string): Promise<void> {
   const blob = await readEncryptedBlob()
   if (!blob) throw new Error('No encrypted vault found')
   const plaintext = await decryptBlob(blob, passphrase)
-  await databaseFile.write(plaintext)
+  // Pass the underlying ArrayBuffer, not the Uint8Array view. SQLocal's import
+  // path puts `message.database` directly in postMessage's transfer list —
+  // only ArrayBuffer is transferable; Uint8Array throws DataCloneError.
+  await databaseFile.write(plaintext.buffer as ArrayBuffer)
   keyPassphrase = passphrase
   currentMode = 'unlocked'
   emit()

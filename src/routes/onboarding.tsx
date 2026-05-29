@@ -29,9 +29,15 @@ type EntryDraft = {
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-const emptyEntryDraft = (): EntryDraft => ({
-  name: '',
-  amount: '',
+const DEFAULT_BALANCE = '0.00'
+const DEFAULT_LABEL = 'Checking'
+const DEFAULT_AMOUNT = '0.00'
+const DEFAULT_INCOME_NAME = 'Paycheck'
+const DEFAULT_EXPENSE_NAME = 'Rent'
+
+const emptyEntryDraft = (defaultName: string): EntryDraft => ({
+  name: defaultName,
+  amount: DEFAULT_AMOUNT,
   startDate: today(),
   cadence: 'monthly',
 })
@@ -42,12 +48,12 @@ function OnboardingPage() {
   const [step, setStep] = useState<Step>('snapshot')
 
   const [snapshotDraft, setSnapshotDraft] = useState<SnapshotDraft>({
-    balance: '',
+    balance: DEFAULT_BALANCE,
     asOf: today(),
-    label: '',
+    label: DEFAULT_LABEL,
   })
-  const [incomeDraft, setIncomeDraft] = useState<EntryDraft>(emptyEntryDraft())
-  const [expenseDraft, setExpenseDraft] = useState<EntryDraft>(emptyEntryDraft())
+  const [incomeDraft, setIncomeDraft] = useState<EntryDraft>(emptyEntryDraft(DEFAULT_INCOME_NAME))
+  const [expenseDraft, setExpenseDraft] = useState<EntryDraft>(emptyEntryDraft(DEFAULT_EXPENSE_NAME))
   const [incomeId, setIncomeId] = useState<string | null>(null)
   const [expenseId, setExpenseId] = useState<string | null>(null)
 
@@ -193,6 +199,7 @@ function SnapshotStep({
             data-lpignore="true"
             value={draft.balance}
             onChange={(e) => onDraftChange({ ...draft, balance: e.target.value })}
+            onFocus={(e) => { if (e.target.value === DEFAULT_BALANCE) e.target.select() }}
             placeholder="0.00"
             className="input pl-7 text-right tabular-nums"
             autoFocus
@@ -222,6 +229,7 @@ function SnapshotStep({
           data-lpignore="true"
           value={draft.label}
           onChange={(e) => onDraftChange({ ...draft, label: e.target.value })}
+          onFocus={(e) => { if (e.target.value === DEFAULT_LABEL) e.target.select() }}
           placeholder="e.g. Chase · 4820"
           className="input"
         />
@@ -313,21 +321,6 @@ function EntryStep({
         <p className="mt-1 text-[12px] text-ink-2">{blurb}</p>
       </header>
 
-      <Field label="Name">
-        <input
-          type="text"
-          name={`cashflow-entry-${nameSlot}-name`}
-          autoComplete="off"
-          data-1p-ignore
-          data-lpignore="true"
-          value={draft.name}
-          onChange={(e) => onDraftChange({ ...draft, name: e.target.value })}
-          placeholder={placeholder}
-          className="input"
-          autoFocus
-        />
-      </Field>
-
       <Field label="Amount">
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 mono text-ink-3">$</span>
@@ -340,10 +333,27 @@ function EntryStep({
             data-lpignore="true"
             value={draft.amount}
             onChange={(e) => onDraftChange({ ...draft, amount: e.target.value })}
+            onFocus={(e) => { if (e.target.value === DEFAULT_AMOUNT) e.target.select() }}
             placeholder="0.00"
             className="input pl-7 text-right tabular-nums"
+            autoFocus
           />
         </div>
+      </Field>
+
+      <Field label="Name">
+        <input
+          type="text"
+          name={`cashflow-entry-${nameSlot}-name`}
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
+          value={draft.name}
+          onChange={(e) => onDraftChange({ ...draft, name: e.target.value })}
+          onFocus={(e) => { if (e.target.value === placeholder) e.target.select() }}
+          placeholder={placeholder}
+          className="input"
+        />
       </Field>
 
       <Field label="Cadence">
