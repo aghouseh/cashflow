@@ -39,6 +39,35 @@ export const CADENCES: ReadonlyArray<CadenceOption> = [
 
 export function findCadence(key: CadenceKey): CadenceOption {
   const found = CADENCES.find((c) => c.key === key)
-  if (!found) throw new Error(`Unknown cadence key: ${key}`)
+  if (!found) {
+    throw new Error(`Unknown cadence key: ${key}`)
+  }
   return found
+}
+
+// Reverse lookup: RRULE string (or null = one-time) → its cadence option.
+// Falls back to one-time for any unrecognized RRULE.
+export function cadenceForRrule(rrule: string | null): CadenceOption {
+  if (!rrule) {
+    return CADENCES[0] // one-time
+  }
+  return CADENCES.find((c) => c.rrule === rrule) ?? CADENCES[0]
+}
+
+// Average number of occurrences per month for a cadence, used to normalize
+// entry amounts into a comparable "per month" figure for the stat strip.
+// One-time entries return 0 — they don't recur, so they don't contribute to
+// a monthly run-rate.
+const MONTHLY_FACTORS: Record<CadenceKey, number> = {
+  'one-time': 0,
+  weekly: 52 / 12,
+  'bi-weekly': 26 / 12,
+  'first-and-fifteenth': 2,
+  monthly: 1,
+  quarterly: 1 / 3,
+  annual: 1 / 12,
+}
+
+export function monthlyFactorForRrule(rrule: string | null): number {
+  return MONTHLY_FACTORS[cadenceForRrule(rrule).key]
 }

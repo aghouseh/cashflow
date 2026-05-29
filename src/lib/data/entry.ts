@@ -50,6 +50,19 @@ export async function updateEntry(id: string, input: EntryInput): Promise<void> 
   await flush()
 }
 
+export async function setEntryPaused(id: string, paused: boolean): Promise<void> {
+  await db
+    .update(entry)
+    .set({ paused, updatedAt: new Date().toISOString() })
+    .where(eq(entry.id, id))
+  await flush()
+}
+
+export async function deleteEntry(id: string): Promise<void> {
+  await db.delete(entry).where(eq(entry.id, id))
+  await flush()
+}
+
 export async function listEntries(): Promise<Entry[]> {
   return db.select().from(entry)
 }
