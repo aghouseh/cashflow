@@ -1,4 +1,4 @@
-import { HeadContent, Scripts, createRootRoute, useNavigate } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { useEffect, useState } from 'react'
@@ -22,7 +22,6 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const vaultMode = useVaultMode()
-  const navigate = useNavigate()
 
   // Track whether the gate is visible independently of vaultMode so the reveal
   // animation can finish before the component unmounts. Set back to true
@@ -31,20 +30,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (vaultMode === 'locked') setShowLock(true)
   }, [vaultMode])
-
-  // Dev-only: Shift+Alt+D wipes data and loads a realistic seed budget.
-  useEffect(() => {
-    if (!import.meta.env.DEV) return
-    async function onKey(e: KeyboardEvent) {
-      if (e.shiftKey && e.altKey && e.key === 'D') {
-        const { seedDevData } = await import('../lib/dev/seed')
-        await seedDevData()
-        navigate({ to: '/' })
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [navigate])
 
   const appShell = (
     <>
