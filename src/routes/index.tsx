@@ -233,21 +233,6 @@ function BalancePage() {
         />
       </section>
 
-      <section className="grid grid-cols-3 gap-4">
-        <div className="card">
-          <p className="micro">Recurring income</p>
-          <p className="display-sm mt-2">{incomeCount}</p>
-        </div>
-        <div className="card">
-          <p className="micro">Recurring expense</p>
-          <p className="display-sm mt-2">{expenseCount}</p>
-        </div>
-        <div className="card">
-          <p className="micro">Events in window</p>
-          <p className="display-sm mt-2">{windowEventsCount}</p>
-        </div>
-      </section>
-
       <section className="card">
         <p className="micro mb-3">
           {isToday ? 'Events on today' : `Events on ${scrubDate.toString()}`}
@@ -272,6 +257,21 @@ function BalancePage() {
             })}
           </ul>
         )}
+      </section>
+
+      <section className="grid grid-cols-3 gap-4">
+        <div className="card">
+          <p className="micro">Recurring income</p>
+          <p className="display-sm mt-2">{incomeCount}</p>
+        </div>
+        <div className="card">
+          <p className="micro">Recurring expense</p>
+          <p className="display-sm mt-2">{expenseCount}</p>
+        </div>
+        <div className="card">
+          <p className="micro">Events in window</p>
+          <p className="display-sm mt-2">{windowEventsCount}</p>
+        </div>
       </section>
     </div>
   )
