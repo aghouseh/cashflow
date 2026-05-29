@@ -22,7 +22,6 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const vaultMode = useVaultMode()
-
   // Track whether the gate is visible independently of vaultMode so the reveal
   // animation can finish before the component unmounts. Set back to true
   // immediately if the vault is locked again (manual lock / timeout).

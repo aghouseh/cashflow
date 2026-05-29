@@ -14,7 +14,7 @@
 
 import { databaseFile } from '../db/client'
 import { encryptBlob, decryptBlob } from './crypto'
-import { readEncryptedBlob, writeEncryptedBlob } from './disk'
+import { readEncryptedBlob, writeEncryptedBlob, deleteEncryptedBlob } from './disk'
 import { readMeta, writeMeta, type VaultMode } from './state'
 
 let currentMode: VaultMode = readMeta().encrypted ? 'locked' : 'none'
@@ -101,4 +101,14 @@ export async function changePassphrase(
   }
   keyPassphrase = newPassphrase
   await flush()
+}
+
+// Wipe the vault's at-rest state: delete the encrypted blob and reset meta.
+// Called as part of a full data erase — does NOT touch the SQLite DB itself.
+export async function wipeVault(): Promise<void> {
+  await deleteEncryptedBlob()
+  writeMeta({ encrypted: false })
+  keyPassphrase = null
+  currentMode = 'none'
+  emit()
 }
