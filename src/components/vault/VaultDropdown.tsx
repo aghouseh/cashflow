@@ -3,6 +3,7 @@ import {
   KeyRound,
   Lock,
   ShieldCheck,
+  Trash2,
   Unlock,
   Upload,
 } from 'lucide-react'
@@ -15,6 +16,7 @@ type Props = {
   onChangePassphrase: () => void
   onExport: () => void
   onImport: () => void
+  onEraseData: () => void
 }
 
 // Menu contents vary with current vault mode. Visibility + dismissal are
@@ -27,6 +29,7 @@ export default function VaultDropdown({
   onChangePassphrase,
   onExport,
   onImport,
+  onEraseData,
 }: Props) {
   const mode = useVaultMode()
 
@@ -74,6 +77,10 @@ export default function VaultDropdown({
       <MenuItem icon={Upload} onClick={onImport}>
         Import…
       </MenuItem>
+      <Divider />
+      <MenuItem icon={Trash2} onClick={onEraseData} destructive>
+        Erase all data…
+      </MenuItem>
     </div>
   )
 }
@@ -81,10 +88,12 @@ export default function VaultDropdown({
 function MenuItem({
   icon: Icon,
   onClick,
+  destructive = false,
   children,
 }: {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; 'aria-hidden'?: boolean }>
   onClick: () => void
+  destructive?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -92,7 +101,9 @@ function MenuItem({
       type="button"
       role="menuitem"
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-field px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-card-2"
+      className={`flex w-full items-center gap-2 rounded-field px-3 py-2 text-left text-[13px] transition-colors hover:bg-card-2 ${
+        destructive ? 'text-out-ink hover:bg-out-soft/60' : 'text-ink'
+      }`}
     >
       <Icon size={14} strokeWidth={1.75} aria-hidden />
       {children}

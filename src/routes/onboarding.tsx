@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
+import { seedDevData } from '../lib/dev/seed'
 import { useDbReady } from '../lib/db/ready'
 import { writeSnapshot } from '../lib/data/snapshot'
 import { createEntry, updateEntry } from '../lib/data/entry'
@@ -74,6 +75,7 @@ function OnboardingPage() {
 
   return (
     <div className="mx-auto mt-8 flex max-w-130 flex-col gap-4">
+      {import.meta.env.DEV && <DevSeedBanner onSeed={() => navigate({ to: '/' })} />}
       <StepPip step={step} />
       {step === 'snapshot' && (
         <SnapshotStep
@@ -416,6 +418,33 @@ function EntryStep({
         </div>
       </footer>
     </form>
+  )
+}
+
+function DevSeedBanner({ onSeed }: { onSeed: () => void }) {
+  const [busy, setBusy] = useState(false)
+
+  async function handleSeed() {
+    setBusy(true)
+    await seedDevData()
+    onSeed()
+  }
+
+  return (
+    <div className="flex items-center justify-between rounded-card border border-dashed border-amber bg-amber-soft/40 px-4 py-3">
+      <div>
+        <p className="text-[11px] font-medium uppercase tracking-wider text-amber-ink mono">Dev</p>
+        <p className="text-[12px] text-ink-2">Load realistic sample budget — 4 income + 26 expense entries</p>
+      </div>
+      <button
+        type="button"
+        onClick={handleSeed}
+        disabled={busy}
+        className="rounded-field border border-amber bg-amber-soft px-3 py-1.5 text-[12px] font-medium text-amber-ink transition-colors hover:bg-amber/20 disabled:opacity-50"
+      >
+        {busy ? 'Loading…' : 'Seed data →'}
+      </button>
+    </div>
   )
 }
 

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { lock } from '../../lib/vault'
+import { wipeAllData } from '../../lib/data/wipe'
 import ChangePassphraseModal from './ChangePassphraseModal'
 import EnableEncryptionModal from './EnableEncryptionModal'
 import UnlockModal from './UnlockModal'
@@ -16,6 +18,7 @@ export default function VaultControl() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [modal, setModal] = useState<Modal>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!menuOpen) return
@@ -63,6 +66,12 @@ export default function VaultControl() {
               setMenuOpen(false)
               // TODO: import flow
               console.warn('Import not implemented yet')
+            }}
+            onEraseData={async () => {
+              setMenuOpen(false)
+              if (!window.confirm('Erase ALL data? This cannot be undone.')) return
+              await wipeAllData()
+              navigate({ to: '/onboarding' })
             }}
           />
         )}
