@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { changePassphrase } from '../../lib/vault'
 import ModalShell from './ModalShell'
 
@@ -15,6 +15,10 @@ export default function ChangePassphraseModal({ open, onClose }: Props) {
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const oldId = useId()
+  const passId = useId()
+  const confirmId = useId()
 
   const tooShort = pass.length > 0 && pass.length < MIN_LEN
   const mismatch = confirm.length > 0 && pass !== confirm
@@ -55,8 +59,9 @@ export default function ChangePassphraseModal({ open, onClose }: Props) {
     >
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div>
-          <label className="micro mb-1.5 block">Current passphrase</label>
+          <label htmlFor={oldId} className="micro mb-1.5 block">Current passphrase</label>
           <input
+            id={oldId}
             type="password"
             autoComplete="current-password"
             value={oldPass}
@@ -67,36 +72,40 @@ export default function ChangePassphraseModal({ open, onClose }: Props) {
         </div>
 
         <div>
-          <label className="micro mb-1.5 block">New passphrase</label>
+          <label htmlFor={passId} className="micro mb-1.5 block">New passphrase</label>
           <input
+            id={passId}
             type="password"
             autoComplete="new-password"
             value={pass}
             onChange={(e) => setPass(e.target.value)}
             className="input"
+            aria-describedby={tooShort ? `${passId}-err` : undefined}
           />
           {tooShort && (
-            <p className="mt-1 text-[11px] text-out-ink">
+            <p id={`${passId}-err`} role="alert" className="mt-1 text-[11px] text-out-ink">
               Too short — at least {MIN_LEN} characters.
             </p>
           )}
         </div>
 
         <div>
-          <label className="micro mb-1.5 block">Confirm new passphrase</label>
+          <label htmlFor={confirmId} className="micro mb-1.5 block">Confirm new passphrase</label>
           <input
+            id={confirmId}
             type="password"
             autoComplete="new-password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             className="input"
+            aria-describedby={mismatch ? `${confirmId}-err` : undefined}
           />
           {mismatch && (
-            <p className="mt-1 text-[11px] text-out-ink">Passphrases do not match.</p>
+            <p id={`${confirmId}-err`} role="alert" className="mt-1 text-[11px] text-out-ink">Passphrases do not match.</p>
           )}
         </div>
 
-        {error && <p className="text-[12px] text-out-ink">{error}</p>}
+        {error && <p role="alert" className="text-[12px] text-out-ink">{error}</p>}
 
         <footer className="mt-2 flex justify-end gap-2">
           <button

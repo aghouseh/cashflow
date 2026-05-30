@@ -19,6 +19,7 @@ import { unlock } from '../../lib/vault'
 function LockGlyph({ open = false, size = 24 }: { open?: boolean; size?: number }) {
   return (
     <svg
+      aria-hidden="true"
       width={size}
       height={size}
       viewBox="0 0 24 24"
@@ -43,6 +44,7 @@ function LockGlyph({ open = false, size = 24 }: { open?: boolean; size?: number 
 function EyeGlyph({ off = false, size = 16 }: { off?: boolean; size?: number }) {
   return (
     <svg
+      aria-hidden="true"
       width={size}
       height={size}
       viewBox="0 0 16 16"
@@ -143,7 +145,7 @@ function LockPanel({ u, compact }: PanelProps) {
         <LockGlyph open={opening} size={compact ? 22 : 24} />
       </div>
 
-      <h1 style={{ fontSize: compact ? 19 : 22, letterSpacing: '-0.015em', margin: '0 0 8px' }}>
+      <h1 id="lock-heading" style={{ fontSize: compact ? 19 : 22, letterSpacing: '-0.015em', margin: '0 0 8px' }}>
         {opening ? 'Unlocking…' : 'Your data is locked'}
       </h1>
 
@@ -164,8 +166,10 @@ function LockPanel({ u, compact }: PanelProps) {
       <div className={'lock-field' + (u.error ? ' err' : '')} style={{ width: '100%' }}>
         <input
           ref={inputRef}
+          id="lock-passphrase"
           className="lock-input"
           type={u.show ? 'text' : 'password'}
+          aria-label="Passphrase"
           placeholder="Passphrase"
           value={u.value}
           autoComplete="off"
@@ -190,16 +194,18 @@ function LockPanel({ u, compact }: PanelProps) {
       <div
         className={'lock-msg ' + (u.error ? 'err' : u.caps ? 'warn' : '')}
         style={{ width: '100%', justifyContent: 'flex-start', margin: '9px 0 16px' }}
+        aria-live="assertive"
+        aria-atomic="true"
       >
         {u.error ? (
           <>
-            <span>✕</span>
+            <span aria-hidden="true">✕</span>
             {u.error}
             {u.attempts > 1 ? ` (${u.attempts} tries)` : ''}
           </>
         ) : u.caps ? (
           <>
-            <span>⇪</span>Caps Lock is on
+            <span aria-hidden="true">⇪</span>Caps Lock is on
           </>
         ) : (
           <span style={{ color: 'var(--color-ink-3)' }}>
@@ -256,14 +262,23 @@ export default function LockedScreen({ children, onUnlocked, compact = false }: 
 
   return (
     <div className="lock-stage">
-      <div className={'lock-content' + (sealed ? ' is-sealed' : revealing ? ' is-revealing' : '')}>
+      {/* aria-hidden keeps AT out of the sealed content; CSS handles pointer-events */}
+      <div
+        className={'lock-content' + (sealed ? ' is-sealed' : revealing ? ' is-revealing' : '')}
+        aria-hidden={sealed || revealing || undefined}
+      >
         {children}
       </div>
 
       {u.state !== 'open' && (
         <>
           <div className={'lock-scrim' + (revealing ? ' fade-out' : '')} />
-          <div className={'lock-center' + (revealing ? ' fade-out' : '')}>
+          <div
+            className={'lock-center' + (revealing ? ' fade-out' : '')}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lock-heading"
+          >
             <LockPanel u={u} compact={compact} />
           </div>
         </>

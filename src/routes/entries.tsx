@@ -239,7 +239,7 @@ function EntryGroup({
                   <button
                     type="button"
                     onClick={() => onTogglePause(e)}
-                    aria-label={e.paused ? 'Resume' : 'Pause'}
+                    aria-label={e.paused ? `Resume ${e.name}` : `Pause ${e.name}`}
                     className="rounded-field p-1 transition-colors hover:text-ink"
                   >
                     {e.paused ? <Play size={13} /> : <Pause size={13} />}
@@ -247,7 +247,7 @@ function EntryGroup({
                   <button
                     type="button"
                     onClick={() => onEdit(e)}
-                    aria-label="Edit"
+                    aria-label={`Edit ${e.name}`}
                     className="rounded-field p-1 transition-colors hover:text-ink"
                   >
                     <Pencil size={13} />
@@ -255,7 +255,7 @@ function EntryGroup({
                   <button
                     type="button"
                     onClick={() => onDelete(e.id)}
-                    aria-label="Delete"
+                    aria-label={`Delete ${e.name}`}
                     className="rounded-field p-1 transition-colors hover:text-out-ink"
                   >
                     <Trash2 size={13} />
@@ -308,6 +308,7 @@ function EntryForm({
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
+          aria-pressed={form.kind === 'IN'}
           onClick={() => onChange({ ...form, kind: 'IN' })}
           className={`rounded-field border px-3 py-2 text-[13px] transition-colors ${
             form.kind === 'IN'
@@ -319,6 +320,7 @@ function EntryForm({
         </button>
         <button
           type="button"
+          aria-pressed={form.kind === 'OUT'}
           onClick={() => onChange({ ...form, kind: 'OUT' })}
           className={`rounded-field border px-3 py-2 text-[13px] transition-colors ${
             form.kind === 'OUT'
@@ -330,8 +332,9 @@ function EntryForm({
         </button>
       </div>
 
-      <Field label="Name">
+      <Field label="Name" id="entry-name">
         <input
+          id="entry-name"
           type="text"
           name="cashflow-entry-name"
           autoComplete="off"
@@ -345,10 +348,11 @@ function EntryForm({
         />
       </Field>
 
-      <Field label="Amount">
+      <Field label="Amount" id="entry-amount">
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 mono text-ink-3">$</span>
           <input
+            id="entry-amount"
             type="text"
             inputMode="decimal"
             name="cashflow-entry-amount"
@@ -369,6 +373,7 @@ function EntryForm({
             <button
               key={c.key}
               type="button"
+              aria-pressed={form.cadence === c.key}
               onClick={() => onChange({ ...form, cadence: c.key })}
               className={`rounded-chip border px-3 py-1 text-[12px] transition-colors ${
                 form.cadence === c.key
@@ -383,8 +388,9 @@ function EntryForm({
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label={form.cadence === 'one-time' ? 'Date' : 'Starting'}>
+        <Field label={form.cadence === 'one-time' ? 'Date' : 'Starting'} id="entry-start">
           <input
+            id="entry-start"
             type="date"
             name="cashflow-entry-start-date"
             autoComplete="off"
@@ -396,8 +402,9 @@ function EntryForm({
           />
         </Field>
         {form.cadence !== 'one-time' && (
-          <Field label="Ends" hint="Optional">
+          <Field label="Ends" hint="Optional" id="entry-end">
             <input
+              id="entry-end"
               type="date"
               name="cashflow-entry-end-date"
               autoComplete="off"
@@ -434,15 +441,17 @@ function EntryForm({
 function Field({
   label,
   hint,
+  id,
   children,
 }: {
   label: string
   hint?: string
+  id?: string
   children: React.ReactNode
 }) {
   return (
     <div>
-      <label className="micro mb-1.5 block">
+      <label htmlFor={id} className="micro mb-1.5 block">
         {label}
         {hint && <span className="ml-1.5 normal-case text-ink-4">· {hint}</span>}
       </label>

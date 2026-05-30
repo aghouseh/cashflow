@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Children, cloneElement, isValidElement, useEffect, useId, useState } from 'react'
 import { enableEncryption } from '../../lib/vault'
 import { probeVaultStorage, type StorageProbeResult } from '../../lib/vault/storage-probe'
 import ModalShell from './ModalShell'
@@ -73,7 +73,7 @@ export default function EnableEncryptionModal({ open, onClose }: Props) {
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         {/* OPFS unavailable — hard block */}
         {opfsBlocked && (
-          <div className="rounded-field border border-out/30 bg-out-soft/60 p-3 text-[12px] leading-snug text-out-ink">
+          <div role="alert" className="rounded-field border border-out/30 bg-out-soft/60 p-3 text-[12px] leading-snug text-out-ink">
             <p className="font-medium">Not supported in this browser context.</p>
             <p className="mt-1">
               Encryption requires private local storage (OPFS) that isn't accessible
@@ -87,7 +87,7 @@ export default function EnableEncryptionModal({ open, onClose }: Props) {
           <>
             {/* Incognito warning — soft, OPFS works but data won't survive session */}
             {probe?.likelyIncognito && (
-              <div className="rounded-field border border-amber/40 bg-amber-soft/60 p-3 text-[12px] leading-snug text-amber-ink">
+              <div role="status" className="rounded-field border border-amber/40 bg-amber-soft/60 p-3 text-[12px] leading-snug text-amber-ink">
                 <p className="font-medium">Private browsing detected.</p>
                 <p className="mt-1">
                   The encrypted vault is stored locally and will be lost when this
@@ -116,7 +116,7 @@ export default function EnableEncryptionModal({ open, onClose }: Props) {
                 autoFocus
               />
               {tooShort && (
-                <p className="mt-1 text-[11px] text-out-ink">Too short — at least {MIN_LEN} characters.</p>
+                <p role="alert" className="mt-1 text-[11px] text-out-ink">Too short — at least {MIN_LEN} characters.</p>
               )}
             </Field>
 
@@ -129,7 +129,7 @@ export default function EnableEncryptionModal({ open, onClose }: Props) {
                 className="input"
               />
               {mismatch && (
-                <p className="mt-1 text-[11px] text-out-ink">Passphrases do not match.</p>
+                <p role="alert" className="mt-1 text-[11px] text-out-ink">Passphrases do not match.</p>
               )}
             </Field>
 
@@ -145,7 +145,7 @@ export default function EnableEncryptionModal({ open, onClose }: Props) {
               </span>
             </label>
 
-            {error && <p className="text-[12px] text-out-ink">{error}</p>}
+            {error && <p role="alert" className="text-[12px] text-out-ink">{error}</p>}
           </>
         )}
 
@@ -184,10 +184,14 @@ function Field({
   hint?: string
   children: React.ReactNode
 }) {
+  const id = useId()
+  const kids = Children.toArray(children)
+  const [first, ...rest] = kids
   return (
     <div>
-      <label className="micro mb-1.5 block">{label}</label>
-      {children}
+      <label htmlFor={id} className="micro mb-1.5 block">{label}</label>
+      {isValidElement(first) ? cloneElement(first as React.ReactElement, { id } as Record<string, unknown>) : first}
+      {rest}
       {hint && <p className="mt-1 text-[11px] text-ink-3">{hint}</p>}
     </div>
   )
