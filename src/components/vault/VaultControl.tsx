@@ -7,8 +7,10 @@ import EnableEncryptionModal from './EnableEncryptionModal'
 import UnlockModal from './UnlockModal'
 import VaultBadge from './VaultBadge'
 import VaultDropdown from './VaultDropdown'
+import ExportModal from '../ExportModal'
+import ImportModal from '../ImportModal'
 
-type Modal = 'enable' | 'unlock' | 'change' | null
+type Modal = 'enable' | 'unlock' | 'change' | 'export' | 'import' | null
 
 // Bundles badge + dropdown + modals. Lives in the TopBar's upper-right.
 // Handles dropdown open-state, click-outside, Escape; defers modal contents
@@ -57,16 +59,8 @@ export default function VaultControl() {
               await lock()
             }}
             onChangePassphrase={() => openModal('change')}
-            onExport={() => {
-              setMenuOpen(false)
-              // TODO: export flow
-              console.warn('Export not implemented yet')
-            }}
-            onImport={() => {
-              setMenuOpen(false)
-              // TODO: import flow
-              console.warn('Import not implemented yet')
-            }}
+            onExport={() => openModal('export')}
+            onImport={() => openModal('import')}
             onEraseData={async () => {
               setMenuOpen(false)
               if (!window.confirm('Erase ALL data? This cannot be undone.')) return
@@ -80,6 +74,12 @@ export default function VaultControl() {
       <EnableEncryptionModal open={modal === 'enable'} onClose={() => setModal(null)} />
       <UnlockModal open={modal === 'unlock'} onClose={() => setModal(null)} />
       <ChangePassphraseModal open={modal === 'change'} onClose={() => setModal(null)} />
+      <ExportModal open={modal === 'export'} onClose={() => setModal(null)} />
+      <ImportModal
+        open={modal === 'import'}
+        onClose={() => setModal(null)}
+        onImported={() => { setModal(null); navigate({ to: '/' }) }}
+      />
     </>
   )
 }
