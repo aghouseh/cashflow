@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en" data-neutral="warm" data-accent="indigo">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cashflow · design system</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="./tokens.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 40px 48px 80px;
+      background: var(--cf-bg);
+      color: var(--cf-ink);
+      font-family: var(--cf-font-sans);
+      font-size: 13.5px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      font-feature-settings: "ss01", "cv11";
+    }
+
+    /* ── layout ─────────────────────────────────────────────────────────── */
+    .page { max-width: 860px; margin: 0 auto; }
+
+    .section { margin-top: 56px; }
+    .section:first-of-type { margin-top: 0; }
+
+    .section-label {
+      font-family: var(--cf-font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--cf-ink-3);
+      margin: 0 0 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--cf-line);
+    }
+
+    /* ── page header ─────────────────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 60px;
+    }
+
+    .page-title {
+      font-family: var(--cf-font-mono);
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      margin: 0 0 4px;
+    }
+
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--cf-ink-2);
+      margin: 0;
+    }
+
+    /* ── switchers ───────────────────────────────────────────────────────── */
+    .switchers { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+
+    .switcher-group { display: flex; flex-direction: column; gap: 6px; }
+
+    .switcher-label {
+      font-family: var(--cf-font-mono);
+      font-size: 9.5px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cf-ink-3);
+    }
+
+    .switcher { display: flex; gap: 4px; }
+
+    .chip {
+      padding: 4px 10px;
+      border-radius: var(--cf-radius-pill);
+      border: 1px solid var(--cf-line-2);
+      background: transparent;
+      font-family: var(--cf-font-mono);
+      font-size: 11px;
+      color: var(--cf-ink-2);
+      cursor: pointer;
+      transition: background 100ms, border-color 100ms, color 100ms;
+    }
+    .chip:hover { background: var(--cf-surface-2); }
+    .chip.active {
+      background: var(--cf-accent-soft);
+      border-color: var(--cf-accent);
+      color: var(--cf-accent-ink);
+    }
+    .chip.active-neutral {
+      background: var(--cf-surface-2);
+      border-color: var(--cf-line-2);
+      color: var(--cf-ink);
+    }
+
+    /* ── swatches ────────────────────────────────────────────────────────── */
+    .swatch-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+
+    .swatch {
+      flex: 1 1 100px;
+      min-width: 80px;
+      border-radius: var(--cf-radius-card);
+      overflow: hidden;
+      border: 1px solid var(--cf-line);
+    }
+
+    .swatch-block { height: 56px; }
+
+    .swatch-info {
+      padding: 10px 12px;
+      background: var(--cf-surface);
+      border-top: 1px solid var(--cf-line);
+    }
+
+    .swatch-name {
+      font-family: var(--cf-font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--cf-ink);
+      margin: 0 0 2px;
+    }
+
+    .swatch-role {
+      font-size: 10.5px;
+      color: var(--cf-ink-3);
+      margin: 0;
+    }
+
+    /* neutral family — use the token itself for bg */
+    .swatch-bg     .swatch-block { background: var(--cf-bg); }
+    .swatch-surface .swatch-block { background: var(--cf-surface); }
+    .swatch-surface-2 .swatch-block { background: var(--cf-surface-2); }
+    .swatch-ink    .swatch-block { background: var(--cf-ink); }
+    .swatch-ink-2  .swatch-block { background: var(--cf-ink-2); }
+    .swatch-ink-3  .swatch-block { background: var(--cf-ink-3); }
+    .swatch-ink-4  .swatch-block { background: var(--cf-ink-4); }
+    .swatch-line   .swatch-block { background: var(--cf-line); }
+    .swatch-line-2 .swatch-block { background: var(--cf-line-2); }
+
+    /* accent family */
+    .swatch-accent      .swatch-block { background: var(--cf-accent); }
+    .swatch-accent-ink  .swatch-block { background: var(--cf-accent-ink); }
+    .swatch-accent-soft .swatch-block { background: var(--cf-accent-soft); }
+
+    /* semantic in */
+    .swatch-in      .swatch-block { background: var(--cf-in); }
+    .swatch-in-ink  .swatch-block { background: var(--cf-in-ink); }
+    .swatch-in-soft .swatch-block { background: var(--cf-in-soft); }
+
+    /* semantic out */
+    .swatch-out      .swatch-block { background: var(--cf-out); }
+    .swatch-out-ink  .swatch-block { background: var(--cf-out-ink); }
+    .swatch-out-soft .swatch-block { background: var(--cf-out-soft); }
+
+    /* ── type specimens ──────────────────────────────────────────────────── */
+    .type-stack { display: flex; flex-direction: column; gap: 24px; }
+
+    .type-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 16px;
+      align-items: baseline;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--cf-line);
+    }
+    .type-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .type-meta { display: flex; flex-direction: column; gap: 2px; }
+    .type-meta-name {
+      font-family: var(--cf-font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cf-ink-3);
+    }
+    .type-meta-spec {
+      font-family: var(--cf-font-mono);
+      font-size: 10px;
+      color: var(--cf-ink-4);
+    }
+
+    .specimen-display {
+      font-family: var(--cf-font-mono);
+      font-size: 56px;
+      font-weight: 400;
+      letter-spacing: -0.025em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .specimen-display-sm {
+      font-family: var(--cf-font-mono);
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: -0.018em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .specimen-h1 { font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
+    .specimen-h2 { font-size: 14.5px; font-weight: 500; }
+    .specimen-body { font-size: 13.5px; }
+    .specimen-micro {
+      font-family: var(--cf-font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--cf-ink-3);
+    }
+    .specimen-mono {
+      font-family: var(--cf-font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── radius ──────────────────────────────────────────────────────────── */
+    .radius-row { display: flex; gap: 20px; flex-wrap: wrap; }
+
+    .radius-swatch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .radius-block {
+      width: 80px;
+      height: 56px;
+      background: var(--cf-accent-soft);
+      border: 2px solid var(--cf-accent);
+    }
+
+    .radius-label {
+      font-family: var(--cf-font-mono);
+      font-size: 10px;
+      color: var(--cf-ink-3);
+      text-align: center;
+    }
+
+    /* ── elevation ───────────────────────────────────────────────────────── */
+    .elevation-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+
+    .elevation-swatch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .elevation-block {
+      width: 100px;
+      height: 64px;
+      background: var(--cf-surface);
+      border: 1px solid var(--cf-line);
+      border-radius: var(--cf-radius-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .elevation-block.modal { box-shadow: var(--cf-shadow-modal); }
+    .elevation-block.lift  { box-shadow: var(--cf-shadow-lift); }
+    .elevation-block.halo  {
+      background: var(--cf-accent);
+      border: none;
+      box-shadow: var(--cf-ring-halo), var(--cf-shadow-lift);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+    .elevation-label {
+      font-family: var(--cf-font-mono);
+      font-size: 10px;
+      color: var(--cf-ink-3);
+      text-align: center;
+    }
+
+    /* ── usage rules ─────────────────────────────────────────────────────── */
+    .rules { display: flex; flex-direction: column; gap: 12px; }
+
+    .rule {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--cf-surface);
+      border: 1px solid var(--cf-line);
+      border-radius: var(--cf-radius-control);
+      align-items: start;
+    }
+
+    .rule-num {
+      font-family: var(--cf-font-mono);
+      font-size: 11px;
+      color: var(--cf-accent-ink);
+      font-weight: 500;
+      padding-top: 1px;
+    }
+
+    .rule-text {
+      font-size: 13px;
+      color: var(--cf-ink-2);
+      line-height: 1.55;
+    }
+
+    .rule-text strong { color: var(--cf-ink); font-weight: 500; }
+    .rule-text code {
+      font-family: var(--cf-font-mono);
+      font-size: 11px;
+      background: var(--cf-surface-2);
+      border: 1px solid var(--cf-line-2);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--cf-ink);
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- header + switchers -->
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">cashflow · design system</h1>
+      <p class="page-subtitle">v1 · colour &amp; core tokens · live via tokens.css</p>
+    </div>
+
+    <div class="switchers">
+      <div class="switcher-group">
+        <span class="switcher-label">Accent</span>
+        <div class="switcher" id="accent-switcher">
+          <button class="chip active" data-accent="indigo">indigo</button>
+          <button class="chip" data-accent="teal">teal</button>
+          <button class="chip" data-accent="violet">violet</button>
+          <button class="chip" data-accent="clay">clay</button>
+          <button class="chip" data-accent="bronze">bronze</button>
+          <button class="chip" data-accent="slate">slate</button>
+        </div>
+      </div>
+      <div class="switcher-group">
+        <span class="switcher-label">Neutral</span>
+        <div class="switcher" id="neutral-switcher">
+          <button class="chip active-neutral" data-neutral="warm">warm</button>
+          <button class="chip" data-neutral="cool">cool</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- neutral -->
+  <section class="section">
+    <p class="section-label">Neutral foundation</p>
+    <div class="swatch-row">
+      <div class="swatch swatch-bg">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-bg</p>
+          <p class="swatch-role">page background</p>
+        </div>
+      </div>
+      <div class="swatch swatch-surface">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-surface</p>
+          <p class="swatch-role">card / sheet / modal</p>
+        </div>
+      </div>
+      <div class="swatch swatch-surface-2">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-surface-2</p>
+          <p class="swatch-role">inset / column header</p>
+        </div>
+      </div>
+    </div>
+    <div class="swatch-row">
+      <div class="swatch swatch-ink">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-ink</p>
+          <p class="swatch-role">primary text · values</p>
+        </div>
+      </div>
+      <div class="swatch swatch-ink-2">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-ink-2</p>
+          <p class="swatch-role">secondary text</p>
+        </div>
+      </div>
+      <div class="swatch swatch-ink-3">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-ink-3</p>
+          <p class="swatch-role">micro-labels</p>
+        </div>
+      </div>
+      <div class="swatch swatch-ink-4">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-ink-4</p>
+          <p class="swatch-role">placeholder · disabled</p>
+        </div>
+      </div>
+    </div>
+    <div class="swatch-row">
+      <div class="swatch swatch-line">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-line</p>
+          <p class="swatch-role">hairline divider</p>
+        </div>
+      </div>
+      <div class="swatch swatch-line-2">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-line-2</p>
+          <p class="swatch-role">stronger divider · control borders</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- accent -->
+  <section class="section">
+    <p class="section-label">Accent — active · now · focus (swappable)</p>
+    <div class="swatch-row">
+      <div class="swatch swatch-accent">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-accent</p>
+          <p class="swatch-role">playhead · scrub · primary button</p>
+        </div>
+      </div>
+      <div class="swatch swatch-accent-ink">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-accent-ink</p>
+          <p class="swatch-role">accent text on light surfaces</p>
+        </div>
+      </div>
+      <div class="swatch swatch-accent-soft">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-accent-soft</p>
+          <p class="swatch-role">active row wash · chip bg</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- semantic -->
+  <section class="section">
+    <p class="section-label">Semantic — money in / out (fixed)</p>
+    <div class="swatch-row">
+      <div class="swatch swatch-in">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-in</p>
+          <p class="swatch-role">deposits · positive delta mark</p>
+        </div>
+      </div>
+      <div class="swatch swatch-in-ink">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-in-ink</p>
+          <p class="swatch-role">positive text on light surfaces</p>
+        </div>
+      </div>
+      <div class="swatch swatch-in-soft">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-in-soft</p>
+          <p class="swatch-role">positive region wash</p>
+        </div>
+      </div>
+    </div>
+    <div class="swatch-row">
+      <div class="swatch swatch-out">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-out</p>
+          <p class="swatch-role">payments · negative delta mark</p>
+        </div>
+      </div>
+      <div class="swatch swatch-out-ink">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-out-ink</p>
+          <p class="swatch-role">negative text on light surfaces</p>
+        </div>
+      </div>
+      <div class="swatch swatch-out-soft">
+        <div class="swatch-block"></div>
+        <div class="swatch-info">
+          <p class="swatch-name">--cf-out-soft</p>
+          <p class="swatch-role">negative region wash</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- type -->
+  <section class="section">
+    <p class="section-label">Type scale</p>
+    <div class="type-stack">
+      <div class="type-row">
+        <div class="type-meta">
+          <span class="type-meta-name">display</span>
+          <span class="type-meta-spec">Geist Mono · 56px · −0.025em</span>
+        </div>
+        <span class="specimen-display">$12,450</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <span class="type-meta-name">display-sm</span>
+          <span class="type-meta-spec">Geist Mono · 28px · −0.018em</span>
+        </div>
+        <span class="specimen-display-sm">$4,820</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <span class="type-meta-name">h1</span>
+          <span class="type-meta-spec">Geist · 20px · 500 · −0.01em</span>
+        </div>
+        <span class="specimen-h1">Balance overview</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <span class="type-meta-name">h2</span>
+          <span class="type-meta-spec">Geist · 14.5px · 500</span>
+        </div>
+        <span class="specimen-h2">Recurring entries</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <span class="type-meta-name">body</span>
+          <span class="type-meta-spec">Geist · 13.5px · 400</span>
+        </div>
+        <span class="specimen-body">Mortgage · every month on the 1st · starting Jan 2025</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <span class="type-meta-name">mono</span>
+          <span class="type-meta-spec">Geist Mono · tnum · tabular</span>
+        </div>
+        <span class="specimen-mono">2025-04-01 · −$2,400.00 · $10,050.00</span>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <span class="type-meta-name">micro</span>
+          <span class="type-meta-spec">Geist Mono · 10px · 500 · 0.09em · upper</span>
+        </div>
+        <span class="specimen-micro">apr · balance · today</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- radius -->
+  <section class="section">
+    <p class="section-label">Radius</p>
+    <div class="radius-row">
+      <div class="radius-swatch">
+        <div class="radius-block" style="border-radius: var(--cf-radius-card);"></div>
+        <div class="radius-label">--cf-radius-card<br>14px · card / modal</div>
+      </div>
+      <div class="radius-swatch">
+        <div class="radius-block" style="border-radius: var(--cf-radius-control);"></div>
+        <div class="radius-label">--cf-radius-control<br>9px · button / input</div>
+      </div>
+      <div class="radius-swatch">
+        <div class="radius-block" style="border-radius: var(--cf-radius-pill); width: 120px;"></div>
+        <div class="radius-label">--cf-radius-pill<br>999px · chip / tag</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- elevation -->
+  <section class="section">
+    <p class="section-label">Elevation</p>
+    <div class="elevation-row">
+      <div class="elevation-swatch">
+        <div class="elevation-block" style="border-color: var(--cf-line-2);"></div>
+        <div class="elevation-label">flat<br>1px border · no shadow</div>
+      </div>
+      <div class="elevation-swatch">
+        <div class="elevation-block lift"></div>
+        <div class="elevation-label">--cf-shadow-lift<br>tooltip / floating mark</div>
+      </div>
+      <div class="elevation-swatch">
+        <div class="elevation-block modal"></div>
+        <div class="elevation-label">--cf-shadow-modal<br>modal / lock panel</div>
+      </div>
+      <div class="elevation-swatch" style="margin-left: 20px;">
+        <div class="elevation-block halo"></div>
+        <div class="elevation-label">--cf-ring-halo +<br>--cf-shadow-lift<br>base on soft</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- rules -->
+  <section class="section">
+    <p class="section-label">Usage rules</p>
+    <div class="rules">
+      <div class="rule">
+        <span class="rule-num">1</span>
+        <p class="rule-text"><strong>One accent, one job.</strong> The accent means active / now / focus — never decorative. If two things are accent-coloured on a screen, one is wrong.</p>
+      </div>
+      <div class="rule">
+        <span class="rule-num">2</span>
+        <p class="rule-text"><strong>The ink ramp does the structure.</strong> <code>ink</code> → values &amp; headings · <code>ink-2</code> → secondary · <code>ink-3</code> → micro-labels · <code>ink-4</code> → placeholder. Borders use <code>line</code> / <code>line-2</code>, never <code>ink</code>.</p>
+      </div>
+      <div class="rule">
+        <span class="rule-num">3</span>
+        <p class="rule-text"><strong>Base never floats on soft.</strong> When an accent <code>base</code> mark sits on an accent <code>soft</code> fill, break them with <code>--cf-ring-halo</code> + <code>--cf-shadow-lift</code> so the mark reads as elevated.</p>
+      </div>
+      <div class="rule">
+        <span class="rule-num">4</span>
+        <p class="rule-text"><strong>Semantic = money only.</strong> Green/red mean cash in/out. Don't borrow them for selection, hover, or status — that's the accent and ink ramp's job.</p>
+      </div>
+      <div class="rule">
+        <span class="rule-num">5</span>
+        <p class="rule-text"><strong>Soft is a wash, not a fill.</strong> Accent-soft and semantic-soft mark a region as selected/relevant at low emphasis. Solid <code>base</code> is reserved for the one element that must be unmissable.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const html = document.documentElement;
+
+  document.getElementById('accent-switcher').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-accent]');
+    if (!btn) return;
+    html.dataset.accent = btn.dataset.accent;
+    document.querySelectorAll('#accent-switcher .chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+  });
+
+  document.getElementById('neutral-switcher').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-neutral]');
+    if (!btn) return;
+    html.dataset.neutral = btn.dataset.neutral;
+    document.querySelectorAll('#neutral-switcher .chip').forEach(c => c.classList.remove('active-neutral'));
+    btn.classList.add('active-neutral');
+  });
+</script>
+</body>
+</html>

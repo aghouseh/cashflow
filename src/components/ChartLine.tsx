@@ -124,7 +124,7 @@ export function YAxisGridlines({ yMin, yMax }: { yMin: number; yMax: number }) {
           y1={yOf(v)}
           x2={VBW}
           y2={yOf(v)}
-          stroke="var(--color-line)"
+          stroke="var(--cf-line)"
           strokeDasharray="2 5"
         />
       ))}
@@ -233,8 +233,8 @@ export default function ChartLine({
       >
         <defs>
           <linearGradient id="chartline-area" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-ink)" stopOpacity="0.07" />
-            <stop offset="100%" stopColor="var(--color-ink)" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--cf-ink)" stopOpacity="0.07" />
+            <stop offset="100%" stopColor="var(--cf-ink)" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -246,16 +246,16 @@ export default function ChartLine({
                 y1={yOf(v)}
                 x2={VBW - padR}
                 y2={yOf(v)}
-                stroke="var(--color-line)"
+                stroke="var(--cf-line)"
                 strokeDasharray="2 5"
               />
               <text
                 x={padL - 8}
                 y={yOf(v) + 3.5}
                 textAnchor="end"
-                fontFamily="var(--font-mono)"
+                fontFamily="var(--cf-font-mono)"
                 fontSize="10"
-                fill="var(--color-ink-3)"
+                fill="var(--cf-ink-3)"
               >
                 ${(v / 1000).toFixed(0)}k
               </text>
@@ -263,7 +263,7 @@ export default function ChartLine({
           ))}
 
         <path d={areaPath} fill="url(#chartline-area)" />
-        <path d={linePath} fill="none" stroke="var(--color-ink)" strokeWidth="1.5" />
+        <path d={linePath} fill="none" stroke="var(--cf-ink)" strokeWidth="1.5" />
 
         {windowEvents.map((ev) => (
           <circle
@@ -271,8 +271,8 @@ export default function ChartLine({
             cx={xOf(ev.localDay)}
             cy={yOf(series[ev.localDay])}
             r="2.4"
-            fill="var(--color-card)"
-            stroke={ev.kind === 'IN' ? 'var(--color-in)' : 'var(--color-out)'}
+            fill="var(--cf-surface)"
+            stroke={ev.kind === 'IN' ? 'var(--cf-in)' : 'var(--cf-out)'}
             strokeWidth="1.4"
           />
         ))}
@@ -284,16 +284,16 @@ export default function ChartLine({
               y1={PAD_T - 2}
               x2={nowX}
               y2={PAD_T + INNER_H + 4}
-              stroke="var(--color-ink-3)"
+              stroke="var(--cf-ink-3)"
               strokeDasharray="3 3"
             />
             <text
               x={nowX + 6}
               y={PAD_T + 10}
-              fontFamily="var(--font-mono)"
+              fontFamily="var(--cf-font-mono)"
               fontSize="10"
               fontWeight="500"
-              fill="var(--color-ink-2)"
+              fill="var(--cf-ink-2)"
               letterSpacing="0.09em"
             >
               NOW
@@ -307,9 +307,9 @@ export default function ChartLine({
             x={xOf(t.day)}
             y={PAD_T + INNER_H + 18}
             textAnchor="middle"
-            fontFamily="var(--font-mono)"
+            fontFamily="var(--cf-font-mono)"
             fontSize="10"
-            fill="var(--color-ink-3)"
+            fill="var(--cf-ink-3)"
           >
             {t.label}
           </text>
@@ -322,25 +322,25 @@ export default function ChartLine({
               y1={PAD_T - 8}
               x2={scrubX}
               y2={PAD_T + INNER_H + 18}
-              stroke="var(--color-amber)"
+              stroke="var(--cf-accent)"
               strokeWidth="1.6"
             />
             <circle
               cx={scrubX}
               cy={scrubY}
               r="8"
-              fill="var(--color-card)"
-              stroke="var(--color-amber)"
+              fill="var(--cf-surface)"
+              stroke="var(--cf-accent)"
               strokeWidth="2.2"
             />
-            <circle cx={scrubX} cy={scrubY} r="3" fill="var(--color-amber)" />
+            <circle cx={scrubX} cy={scrubY} r="3" fill="var(--cf-accent)" />
             <rect
               x={scrubX - 5}
               y={PAD_T + INNER_H + 12}
               width="10"
               height="10"
               transform={`rotate(45 ${scrubX} ${PAD_T + INNER_H + 17})`}
-              fill="var(--color-amber)"
+              fill="var(--cf-accent)"
             />
           </>
         )}
