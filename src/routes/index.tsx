@@ -176,6 +176,7 @@ function BalancePage() {
                 <button
                   key={w.key}
                   type="button"
+                  aria-pressed={w.key === windowKey}
                   onClick={() => changeWindow(w.key)}
                   className={`rounded-chip border px-2.5 py-1 text-[11px] transition-colors ${
                     w.key === windowKey
@@ -195,7 +196,7 @@ function BalancePage() {
               disabled={pageIndex === 0 && absoluteScrubDay === 0}
               className="flex items-center gap-1.5 rounded-field border border-line-2 px-2.5 py-1 text-[11px] text-ink-2 transition-colors hover:text-ink disabled:opacity-30 disabled:hover:text-ink-2"
             >
-              <RotateCcw size={12} />
+              <RotateCcw size={12} aria-hidden />
               Today
             </button>
             <button

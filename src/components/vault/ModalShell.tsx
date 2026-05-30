@@ -23,6 +23,7 @@ export default function ModalShell({ open, onClose, title, children }: Props) {
   return (
     <dialog
       ref={ref}
+      aria-labelledby="modal-title"
       onClose={onClose}
       onClick={(e) => {
         // Click-on-backdrop closes. Inner clicks bubble from children with target !== dialog.
@@ -31,7 +32,7 @@ export default function ModalShell({ open, onClose, title, children }: Props) {
       className="w-[480px] max-w-[calc(100vw-2rem)] rounded-card border border-line bg-card p-0 text-ink backdrop:bg-black/30"
     >
       <header className="flex items-center justify-between border-b border-line px-5 py-3">
-        <h2 className="text-[15px] font-medium tracking-tight">{title}</h2>
+        <h2 id="modal-title" className="text-[15px] font-medium tracking-tight">{title}</h2>
         <button
           type="button"
           onClick={onClose}

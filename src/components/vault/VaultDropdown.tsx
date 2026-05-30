@@ -36,6 +36,7 @@ export default function VaultDropdown({
   return (
     <div
       role="menu"
+      aria-label="Vault options"
       className="absolute right-0 top-[calc(100%+6px)] z-20 w-64 rounded-card border border-line bg-card p-1 text-ink shadow-[0_24px_60px_rgba(0,0,0,0.12)]"
     >
       {mode === 'none' && (

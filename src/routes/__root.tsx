@@ -33,7 +33,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const appShell = (
     <>
       <TopBar />
-      <main className="mx-auto max-w-270 px-6 py-6">
+      <main id="main-content" className="mx-auto max-w-270 px-6 py-6">
         {children}
       </main>
     </>

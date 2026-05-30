@@ -186,13 +186,14 @@ function SnapshotStep({
         </p>
       </header>
 
-      <Field label="Current balance" hint="In dollars. Negatives are fine if you're underwater.">
+      <Field label="Current balance" hint="In dollars. Negatives are fine if you're underwater." id="ob-balance">
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 mono text-ink-3">$</span>
           <input
             // `type="text"` + `inputMode="decimal"` is the standard money-input
             // pattern: numeric keyboard on mobile, no native spinner buttons,
             // no locale-dependent stepping behavior of `type="number"`.
+            id="ob-balance"
             type="text"
             inputMode="decimal"
             name="cashflow-snapshot-balance"
@@ -209,8 +210,9 @@ function SnapshotStep({
         </div>
       </Field>
 
-      <Field label="As of">
+      <Field label="As of" id="ob-asof">
         <input
+          id="ob-asof"
           type="date"
           name="cashflow-snapshot-as-of"
           autoComplete="off"
@@ -222,8 +224,9 @@ function SnapshotStep({
         />
       </Field>
 
-      <Field label="Account label" hint="Optional. Helpful if you'll add other accounts later.">
+      <Field label="Account label" hint="Optional. Helpful if you'll add other accounts later." id="ob-label">
         <input
+          id="ob-label"
           type="text"
           name="cashflow-snapshot-account-label"
           autoComplete="off"
@@ -237,7 +240,7 @@ function SnapshotStep({
         />
       </Field>
 
-      {error && <p className="text-[12px] text-out-ink">{error}</p>}
+      {error && <p role="alert" className="text-[12px] text-out-ink">{error}</p>}
 
       <footer className="mt-2 flex justify-end">
         <button
@@ -323,10 +326,11 @@ function EntryStep({
         <p className="mt-1 text-[12px] text-ink-2">{blurb}</p>
       </header>
 
-      <Field label="Amount">
+      <Field label="Amount" id={`ob-${nameSlot}-amount`}>
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 mono text-ink-3">$</span>
           <input
+            id={`ob-${nameSlot}-amount`}
             type="text"
             inputMode="decimal"
             name={`cashflow-entry-${nameSlot}-amount`}
@@ -343,8 +347,9 @@ function EntryStep({
         </div>
       </Field>
 
-      <Field label="Name">
+      <Field label="Name" id={`ob-${nameSlot}-name`}>
         <input
+          id={`ob-${nameSlot}-name`}
           type="text"
           name={`cashflow-entry-${nameSlot}-name`}
           autoComplete="off"
@@ -364,6 +369,7 @@ function EntryStep({
             <button
               key={c.key}
               type="button"
+              aria-pressed={draft.cadence === c.key}
               onClick={() => onDraftChange({ ...draft, cadence: c.key })}
               className={`rounded-chip border px-3 py-1 text-[12px] transition-colors ${
                 draft.cadence === c.key
@@ -377,8 +383,9 @@ function EntryStep({
         </div>
       </Field>
 
-      <Field label={draft.cadence === 'one-time' ? 'Date' : 'Starting'}>
+      <Field label={draft.cadence === 'one-time' ? 'Date' : 'Starting'} id={`ob-${nameSlot}-start`}>
         <input
+          id={`ob-${nameSlot}-start`}
           type="date"
           name={`cashflow-entry-${nameSlot}-start-date`}
           autoComplete="off"
@@ -390,7 +397,7 @@ function EntryStep({
         />
       </Field>
 
-      {error && <p className="text-[12px] text-out-ink">{error}</p>}
+      {error && <p role="alert" className="text-[12px] text-out-ink">{error}</p>}
 
       <footer className="mt-2 flex items-center justify-between">
         <button
@@ -451,15 +458,17 @@ function DevSeedBanner({ onSeed }: { onSeed: () => void }) {
 function Field({
   label,
   hint,
+  id,
   children,
 }: {
   label: string
   hint?: string
+  id?: string
   children: React.ReactNode
 }) {
   return (
     <div>
-      <label className="micro mb-1.5 block">{label}</label>
+      <label htmlFor={id} className="micro mb-1.5 block">{label}</label>
       {children}
       {hint && <p className="mt-1 text-[11px] text-ink-3">{hint}</p>}
     </div>

@@ -44,16 +44,18 @@ export default function UnlockModal({ open, onClose }: Props) {
     >
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div>
-          <label className="micro mb-1.5 block">Passphrase</label>
+          <label htmlFor="unlock-pass" className="micro mb-1.5 block">Passphrase</label>
           <input
+            id="unlock-pass"
             type="password"
             autoComplete="current-password"
             value={pass}
             onChange={(e) => setPass(e.target.value)}
             className="input"
             autoFocus
+            aria-describedby={error ? 'unlock-pass-err' : undefined}
           />
-          {error && <p className="mt-1 text-[12px] text-out-ink">{error}</p>}
+          {error && <p id="unlock-pass-err" role="alert" className="mt-1 text-[12px] text-out-ink">{error}</p>}
         </div>
 
         <footer className="mt-2 flex justify-end gap-2">
