@@ -1,6 +1,8 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Pencil, Trash2, Pause, Play } from 'lucide-react'
+import ImportModal from '../components/ImportModal'
+import ExportModal from '../components/ExportModal'
 import {
   createEntry,
   updateEntry,
@@ -75,6 +77,8 @@ function EntriesPage() {
   const data = Route.useLoaderData()
   const router = useRouter()
   const [form, setForm] = useState<FormState | null>(null)
+  const [showImport, setShowImport] = useState(false)
+  const [showExport, setShowExport] = useState(false)
 
   if (!data) {
     return <div className="card text-[12px] text-ink-3">Loading…</div>
@@ -135,13 +139,29 @@ function EntriesPage() {
           <p className="micro">Entries</p>
           <h1 className="text-[22px] font-medium tracking-tight">Recurring &amp; scheduled</h1>
         </div>
-        <button
-          type="button"
-          onClick={() => setForm(blankForm('OUT'))}
-          className="rounded-field border border-line-2 px-3 py-1.5 text-[12px] text-ink hover:bg-card-2"
-        >
-          + New entry
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowImport(true)}
+            className="rounded-field border border-line-2 px-3 py-1.5 text-[12px] text-ink-2 hover:bg-card-2 hover:text-ink"
+          >
+            Import…
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowExport(true)}
+            className="rounded-field border border-line-2 px-3 py-1.5 text-[12px] text-ink-2 hover:bg-card-2 hover:text-ink"
+          >
+            Export…
+          </button>
+          <button
+            type="button"
+            onClick={() => setForm(blankForm('OUT'))}
+            className="rounded-field border border-line-2 px-3 py-1.5 text-[12px] text-ink hover:bg-card-2"
+          >
+            + New entry
+          </button>
+        </div>
       </header>
 
       <section className="grid grid-cols-3 gap-4">
@@ -188,6 +208,16 @@ function EntriesPage() {
         onEdit={(e) => setForm(formFromEntry(e))}
         onDelete={onDelete}
         onTogglePause={onTogglePause}
+      />
+
+      <ImportModal
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        onImported={async () => { setShowImport(false); await router.invalidate() }}
+      />
+      <ExportModal
+        open={showExport}
+        onClose={() => setShowExport(false)}
       />
     </div>
   )
