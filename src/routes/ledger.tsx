@@ -265,7 +265,7 @@ function LedgerPage() {
             ref={viewportRef}
             tabIndex={0}
             onKeyDown={onKeyDown}
-            className="relative h-[calc(100dvh-13rem)] overflow-hidden rounded-b-card border border-line bg-card outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--color-line-2)]"
+            className="relative h-[calc(100dvh-13rem)] overflow-hidden rounded-b-card border border-line bg-card outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--cf-line-2)]"
           >
             <div
               ref={setScroller}
@@ -359,7 +359,7 @@ function AnchorRow({
       className="grid grid-cols-[64px_1fr_auto] items-center border-b border-line bg-gradient-to-b from-card-2 to-card px-4"
     >
       <div className="flex justify-center">
-        <span className="size-[11px] rounded-full bg-ink shadow-[0_0_0_4px_var(--color-card),0_0_0_5px_var(--color-line-2)]" />
+        <span className="size-[11px] rounded-full bg-ink shadow-[0_0_0_4px_var(--cf-surface),0_0_0_5px_var(--cf-line-2)]" />
       </div>
       <div className="flex flex-col gap-0.5">
         <span className="micro">Today · starting balance</span>
@@ -393,7 +393,7 @@ function EventRow({ item, focused }: { item: EventItem; focused: boolean }) {
     <div style={{ height: item.h }}>
       <div
         className={`ld-grid h-full border-b border-line px-4 transition-colors ${
-          focused ? 'bg-amber-soft shadow-[inset_3px_0_0_var(--color-amber)]' : ''
+          focused ? 'bg-amber-soft shadow-[inset_3px_0_0_var(--cf-accent)]' : ''
         }`}
       >
         <div className="flex flex-col leading-[1.1]">
@@ -406,7 +406,7 @@ function EventRow({ item, focused }: { item: EventItem; focused: boolean }) {
           <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-line-2" />
           <span
             className="relative z-[1] size-[9px] rounded-full border-[1.5px] bg-card"
-            style={{ borderColor: isIn ? 'var(--color-in)' : 'var(--color-out)' }}
+            style={{ borderColor: isIn ? 'var(--cf-in)' : 'var(--cf-out)' }}
           />
         </div>
         <div className="flex min-w-0 flex-col gap-px">

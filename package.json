@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "design-system": "vite --config vite.config.design-system.ts"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",

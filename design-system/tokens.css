@@ -1,0 +1,110 @@
+/* ============================================================================
+   Cashflow — colour & core tokens  ·  v1
+   ----------------------------------------------------------------------------
+   Role-based custom properties. Three families:
+
+     NEUTRAL    surfaces + a 4-step ink ramp + 2 hairlines (all structure)
+     ACCENT     the single "live / now / focus" colour (swappable)
+     SEMANTIC   money in / out (fixed)
+
+   Every coloured family is a triad:
+     · base   the saturated mark   (lines, the playhead, primary button)
+     · ink    accent/▸ -coloured TEXT on light surfaces
+     · soft   the pale wash BEHIND a base mark (active row, chip bg)
+     · on     (accent only) the text colour to use ON the base fill
+
+   SWAP THE ACCENT:   <html data-accent="teal">      (indigo is default)
+   SWAP THE NEUTRAL:  <html data-neutral="cool">      (warm is default)
+   ========================================================================== */
+
+:root {
+  /* ---- NEUTRAL · warm (default) ---- */
+  --cf-bg:        #faf9f5;   /* page */
+  --cf-surface:   #ffffff;   /* raised card / sheet */
+  --cf-surface-2: #f4f3ee;   /* inset / column header */
+  --cf-ink:       #1a1a17;   /* primary text · values · headings */
+  --cf-ink-2:     #56554e;   /* secondary text */
+  --cf-ink-3:     #8d8b82;   /* mono micro-labels */
+  --cf-ink-4:     #c3c1b7;   /* placeholder · disabled */
+  --cf-line:      #eae8e1;   /* hairline divider */
+  --cf-line-2:    #d8d5cc;   /* stronger divider · control borders */
+
+  /* ---- ACCENT · indigo (default) ---- */
+  --cf-accent:      oklch(0.55 0.15 262);
+  --cf-accent-ink:  oklch(0.42 0.12 262);
+  --cf-accent-soft: oklch(0.955 0.028 262);
+  --cf-accent-on:   #ffffff;
+
+  /* ---- SEMANTIC · fixed across all accents ---- */
+  --cf-in:        oklch(0.56 0.09 155);
+  --cf-in-ink:    oklch(0.43 0.07 155);
+  --cf-in-soft:   oklch(0.95 0.03 155);
+  --cf-out:       oklch(0.57 0.13 27);
+  --cf-out-ink:   oklch(0.44 0.10 27);
+  --cf-out-soft:  oklch(0.96 0.03 27);
+
+  /* ---- TYPE ---- */
+  --cf-font-sans: "Geist", -apple-system, system-ui, sans-serif;
+  --cf-font-mono: "Geist Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+
+  /* ---- RADIUS ---- */
+  --cf-radius-card:    14px;  /* cards, sheets, modals */
+  --cf-radius-control:  9px;  /* buttons, inputs, fields (8–10) */
+  --cf-radius-pill:    999px; /* chips, tags */
+
+  /* ---- ELEVATION ---- (used sparingly — see README rule 3) */
+  --cf-shadow-modal:   0 12px 40px rgba(0,0,0,.18);
+  --cf-shadow-lift:    0 3px 8px rgba(0,0,0,.22);   /* tooltip / floating mark */
+  --cf-ring-halo:      0 0 0 3px var(--cf-surface);  /* break base off soft */
+}
+
+/* ============================================================================
+   NEUTRAL FOUNDATION · cool alternative
+   ========================================================================== */
+:root[data-neutral="cool"] {
+  --cf-bg:        #f7f8f9;
+  --cf-surface:   #ffffff;
+  --cf-surface-2: #eef1f3;
+  --cf-ink:       #17191c;
+  --cf-ink-2:     #4e5258;
+  --cf-ink-3:     #868a91;
+  --cf-ink-4:     #c0c4ca;
+  --cf-line:      #e6e8ec;
+  --cf-line-2:    #d3d7dd;
+}
+
+/* ============================================================================
+   ACCENT FAMILIES · override only the accent triad.
+   All share a fixed perceptual weight (base ≈ L0.56 / C0.13) so swapping never
+   breaks the UI's contrast relationships.
+   ========================================================================== */
+:root[data-accent="teal"] {
+  --cf-accent:      oklch(0.58 0.10 195);
+  --cf-accent-ink:  oklch(0.44 0.08 195);
+  --cf-accent-soft: oklch(0.955 0.030 195);
+  --cf-accent-on:   #ffffff;
+}
+:root[data-accent="violet"] {
+  --cf-accent:      oklch(0.55 0.16 295);
+  --cf-accent-ink:  oklch(0.42 0.13 295);
+  --cf-accent-soft: oklch(0.955 0.033 295);
+  --cf-accent-on:   #ffffff;
+}
+:root[data-accent="clay"] {
+  --cf-accent:      oklch(0.60 0.12 45);
+  --cf-accent-ink:  oklch(0.45 0.10 45);
+  --cf-accent-soft: oklch(0.955 0.033 45);
+  --cf-accent-on:   #ffffff;
+}
+:root[data-accent="bronze"] {
+  --cf-accent:      oklch(0.66 0.10 75);
+  --cf-accent-ink:  oklch(0.45 0.08 72);
+  --cf-accent-soft: oklch(0.95 0.035 80);
+  --cf-accent-on:   oklch(0.28 0.06 70); /* dark text — bronze base is light */
+}
+:root[data-accent="slate"] {
+  --cf-accent:      oklch(0.46 0.025 255);
+  --cf-accent-ink:  oklch(0.32 0.02 255);
+  --cf-accent-soft: oklch(0.93 0.012 255);
+  --cf-accent-on:   #ffffff;
+}

@@ -155,7 +155,7 @@ function LockPanel({ u, compact }: PanelProps) {
           lineHeight: 1.55,
           margin: '0 0 22px',
           maxWidth: 300,
-          color: 'var(--color-ink-2)',
+          color: 'var(--cf-ink-2)',
         }}
       >
         cashflow keeps your balances and entries encrypted on this device. Enter
@@ -208,7 +208,7 @@ function LockPanel({ u, compact }: PanelProps) {
             <span aria-hidden="true">⇪</span>Caps Lock is on
           </>
         ) : (
-          <span style={{ color: 'var(--color-ink-3)' }}>
+          <span style={{ color: 'var(--cf-ink-3)' }}>
             Case-sensitive · stored only on this device
           </span>
         )}
@@ -230,12 +230,12 @@ function LockPanel({ u, compact }: PanelProps) {
       {showHelp && (
         <p
           style={{
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--cf-font-mono)',
             fontSize: 10.5,
             lineHeight: 1.6,
             margin: '10px 0 0',
             maxWidth: 290,
-            color: 'var(--color-ink-3)',
+            color: 'var(--cf-ink-3)',
           }}
         >
           Your passphrase is the only key — it never leaves this device and we
