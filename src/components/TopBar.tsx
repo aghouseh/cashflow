@@ -33,6 +33,9 @@ export default function TopBar() {
             <span className="mono text-[12px] uppercase tracking-[0.16em]">
               cashflow
             </span>
+            <span className="rounded-pill border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-accent-ink">
+              beta
+            </span>
           </Link>
 
           <ul className="flex items-center gap-5 text-[13px]">
@@ -40,11 +43,9 @@ export default function TopBar() {
               <li key={to}>
                 <Link
                   to={to}
-                  className="text-ink-2 no-underline transition-colors hover:text-ink"
-                  activeProps={{
-                    className: "text-ink no-underline",
-                    "aria-current": "page" as const,
-                  }}
+                  activeOptions={{ exact: true }}
+                  className="border-b-2 border-transparent pb-px text-ink-2 no-underline transition-colors hover:text-ink aria-[current=page]:border-accent aria-[current=page]:font-medium aria-[current=page]:text-ink"
+                  activeProps={{ "aria-current": "page" as const }}
                 >
                   {label}
                 </Link>

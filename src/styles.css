@@ -60,6 +60,10 @@ body,
 }
 
 html {
+  scrollbar-gutter: stable;
+}
+
+html {
   font-feature-settings: "ss01", "cv11";
 }
 
