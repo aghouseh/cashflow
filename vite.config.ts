@@ -21,7 +21,14 @@ const config = defineConfig({
   server: {
     host: true,
     port: 3000,
-    allowedHosts: ['localhost', 'mini.agh', 'cashflow.mini.agh'],
+    allowedHosts: ['localhost', 'mini.agh', 'cashflow.mini.agh', 'cashflow.dev.houza.org'],
+    // HMR WebSocket must connect through Caddy's TLS termination (port 443),
+    // not directly to Vite's port 3000. Caddy passes WS upgrades transparently.
+    hmr: {
+      host: 'cashflow.dev.houza.org',
+      protocol: 'wss',
+      clientPort: 443,
+    },
   },
   plugins: [
     devtools(),
