@@ -21,15 +21,7 @@ const config = defineConfig({
   server: {
     host: true,
     port: 3000,
-    allowedHosts: ['mini.agh', 'localhost', 'cashflow.houza.org'],
-    // Vite dev is fronted by Caddy on https://cashflow.houza.org:5173/.
-    // HMR client needs the public host+port (not vite's internal 3000) so its
-    // WebSocket connects through Caddy's TLS-upgraded reverse_proxy.
-    hmr: {
-      host: 'cashflow.houza.org',
-      protocol: 'wss',
-      clientPort: 5173,
-    },
+    allowedHosts: ['localhost', 'mini.agh', 'cashflow.mini.agh'],
   },
   plugins: [
     devtools(),
