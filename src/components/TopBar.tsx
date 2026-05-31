@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import VaultControl from "./vault/VaultControl";
 
 // 52px tab nav per mock README. Brand mark + wordmark left, tabs center,
@@ -12,6 +12,8 @@ const TABS = [
 ] as const;
 
 export default function TopBar() {
+  const isOnboarding = useRouterState({ select: s => s.location.pathname === '/onboarding' })
+
   return (
     <>
       <a
@@ -38,7 +40,7 @@ export default function TopBar() {
             </span>
           </Link>
 
-          <ul className="flex items-center gap-5 text-[13px]">
+          {!isOnboarding && <ul className="flex items-center gap-5 text-[13px]">
             {TABS.map(({ to, label }) => (
               <li key={to}>
                 <Link
@@ -51,7 +53,7 @@ export default function TopBar() {
                 </Link>
               </li>
             ))}
-          </ul>
+          </ul>}
 
           <div className="ml-auto">
             <VaultControl />
