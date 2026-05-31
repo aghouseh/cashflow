@@ -1,15 +1,15 @@
-import { Link } from '@tanstack/react-router'
-import VaultControl from './vault/VaultControl'
+import { Link } from "@tanstack/react-router";
+import VaultControl from "./vault/VaultControl";
 
 // 52px tab nav per mock README. Brand mark + wordmark left, tabs center,
 // vault control right. There is no "profile" — local-first; device is identity.
 
 const TABS = [
-  { to: '/', label: 'Balance' },
-  { to: '/ledger', label: 'Ledger' },
-  { to: '/entries', label: 'Entries' },
-  { to: '/scenarios', label: 'Scenarios' },
-] as const
+  { to: "/", label: "Balance" },
+  { to: "/ledger", label: "Ledger" },
+  { to: "/entries", label: "Entries" },
+  // { to: '/scenarios', label: 'Scenarios' }, TODO: scenarios are a stretch goal, and not in the initial MVP, so hiding for now
+] as const;
 
 export default function TopBar() {
   return (
@@ -22,9 +22,17 @@ export default function TopBar() {
       </a>
       <header className="sticky top-0 z-10 h-13 border-b border-line bg-card">
         <nav className="mx-auto flex h-full max-w-270 items-center gap-6 px-6">
-          <Link to="/" className="flex items-center gap-2 no-underline text-ink">
-            <span aria-hidden className="inline-block h-4.5 w-4.5 rounded-[5px] bg-ink" />
-            <span className="mono text-[12px] uppercase tracking-[0.16em]">cashflow</span>
+          <Link
+            to="/"
+            className="flex items-center gap-2 no-underline text-ink"
+          >
+            <span
+              aria-hidden
+              className="inline-block h-4.5 w-4.5 rounded-[5px] bg-accent"
+            />
+            <span className="mono text-[12px] uppercase tracking-[0.16em]">
+              cashflow
+            </span>
           </Link>
 
           <ul className="flex items-center gap-5 text-[13px]">
@@ -33,7 +41,10 @@ export default function TopBar() {
                 <Link
                   to={to}
                   className="text-ink-2 no-underline transition-colors hover:text-ink"
-                  activeProps={{ className: 'text-ink no-underline', 'aria-current': 'page' as const }}
+                  activeProps={{
+                    className: "text-ink no-underline",
+                    "aria-current": "page" as const,
+                  }}
                 >
                   {label}
                 </Link>
@@ -47,5 +58,5 @@ export default function TopBar() {
         </nav>
       </header>
     </>
-  )
+  );
 }

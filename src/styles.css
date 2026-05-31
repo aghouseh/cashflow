@@ -18,7 +18,13 @@
   --color-line:   var(--cf-line);
   --color-line-2: var(--cf-line-2);
 
-  /* accent → was "amber" — now theme-swappable via data-accent attribute */
+  /* accent — semantic names (prefer these going forward) */
+  --color-accent:      var(--cf-accent);
+  --color-accent-ink:  var(--cf-accent-ink);
+  --color-accent-soft: var(--cf-accent-soft);
+  --color-accent-on:   var(--cf-accent-on);
+
+  /* amber → legacy alias for existing classes; points at accent */
   --color-amber:      var(--cf-accent);
   --color-amber-ink:  var(--cf-accent-ink);
   --color-amber-soft: var(--cf-accent-soft);
