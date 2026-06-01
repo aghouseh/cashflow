@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { project } from './projection'
 import type { Entry } from './db/schema'
 
-const snapshot = { balance: 1000, asOf: '2026-01-01' }
+const snapshot = { id: 'snap-1', balance: 1000, asOf: '2026-01-01' }
 
 const baseEntry = (overrides: Partial<Entry>): Entry => ({
   id: 'e1',
@@ -21,20 +21,20 @@ const baseEntry = (overrides: Partial<Entry>): Entry => ({
 
 describe('project', () => {
   it('empty entries → series is flat snapshot balance', () => {
-    const { events, series } = project(snapshot, [], 7)
+    const { events, series } = project([snapshot], [], 7)
     expect(events).toEqual([])
     expect(series).toEqual([1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000])
   })
 
   it('horizonDays=0 → series length 1, no events', () => {
-    const { events, series } = project(snapshot, [baseEntry({ startDate: '2026-01-02' })], 0)
+    const { events, series } = project([snapshot], [baseEntry({ startDate: '2026-01-02' })], 0)
     expect(events).toEqual([])
     expect(series).toEqual([1000])
   })
 
   it('one-time IN entry inside window', () => {
     const e = baseEntry({ startDate: '2026-01-03', amount: 50, kind: 'IN' })
-    const { events, series } = project(snapshot, [e], 7)
+    const { events, series } = project([snapshot], [e], 7)
     expect(events).toHaveLength(1)
     expect(events[0]).toMatchObject({ dayIndex: 2, amount: 50, kind: 'IN' })
     expect(series).toEqual([1000, 1000, 1050, 1050, 1050, 1050, 1050, 1050])
@@ -42,21 +42,21 @@ describe('project', () => {
 
   it('one-time OUT entry — amount stored positive, sign applied', () => {
     const e = baseEntry({ startDate: '2026-01-02', amount: 30, kind: 'OUT' })
-    const { events, series } = project(snapshot, [e], 3)
+    const { events, series } = project([snapshot], [e], 3)
     expect(events[0]).toMatchObject({ amount: -30, kind: 'OUT' })
     expect(series).toEqual([1000, 970, 970, 970])
   })
 
   it('asOf-day events excluded (snapshot includes today)', () => {
     const e = baseEntry({ startDate: '2026-01-01', amount: 999 })
-    const { events, series } = project(snapshot, [e], 3)
+    const { events, series } = project([snapshot], [e], 3)
     expect(events).toEqual([])
     expect(series).toEqual([1000, 1000, 1000, 1000])
   })
 
   it('paused entries skip', () => {
     const e = baseEntry({ startDate: '2026-01-02', paused: true })
-    const { events } = project(snapshot, [e], 7)
+    const { events } = project([snapshot], [e], 7)
     expect(events).toEqual([])
   })
 
@@ -67,7 +67,7 @@ describe('project', () => {
       amount: 100,
       rrule: 'FREQ=WEEKLY',
     })
-    const { events, series } = project(snapshot, [e], 21)
+    const { events, series } = project([snapshot], [e], 21)
     // expected: 01-02, 01-09, 01-16 — three within 21 days
     expect(events.map((x) => x.date)).toEqual(['2026-01-02', '2026-01-09', '2026-01-16'])
     expect(series[1]).toBe(1100)
@@ -82,7 +82,7 @@ describe('project', () => {
       amount: 200,
       rrule: 'FREQ=WEEKLY;INTERVAL=2',
     })
-    const { events } = project(snapshot, [e], 30)
+    const { events } = project([snapshot], [e], 30)
     expect(events.map((x) => x.date)).toEqual(['2026-01-02', '2026-01-16', '2026-01-30'])
   })
 
@@ -92,7 +92,7 @@ describe('project', () => {
       amount: 50,
       rrule: 'FREQ=MONTHLY;BYMONTHDAY=1,15',
     })
-    const { events } = project(snapshot, [e], 90)
+    const { events } = project([snapshot], [e], 90)
     expect(events.map((x) => x.date)).toEqual([
       '2026-01-15',
       '2026-02-01',
@@ -109,7 +109,7 @@ describe('project', () => {
       amount: 1000,
       rrule: 'FREQ=MONTHLY',
     })
-    const { events } = project(snapshot, [e], 120)
+    const { events } = project([snapshot], [e], 120)
     expect(events.map((x) => x.date)).toEqual([
       '2026-01-15',
       '2026-02-15',
@@ -125,14 +125,14 @@ describe('project', () => {
       amount: 10,
       rrule: 'FREQ=WEEKLY',
     })
-    const { events } = project(snapshot, [e], 30)
+    const { events } = project([snapshot], [e], 30)
     expect(events.map((x) => x.date)).toEqual(['2026-01-02', '2026-01-09'])
   })
 
   it('mixed IN/OUT same day — IN sorted first', () => {
     const inE = baseEntry({ id: 'a-in', kind: 'IN', startDate: '2026-01-03', amount: 100 })
     const outE = baseEntry({ id: 'b-out', kind: 'OUT', startDate: '2026-01-03', amount: 40 })
-    const { events, series } = project(snapshot, [outE, inE], 5)
+    const { events, series } = project([snapshot], [outE, inE], 5)
     expect(events.map((x) => x.kind)).toEqual(['IN', 'OUT'])
     expect(series[2]).toBe(1060) // 1000 + 100 - 40
   })
@@ -152,7 +152,7 @@ describe('project', () => {
       amount: 200,
       rrule: 'FREQ=MONTHLY',
     })
-    const { series } = project(snapshot, [salary, rent], 14)
+    const { series } = project([snapshot], [salary, rent], 14)
     // day 1 (01-02): +500 → 1500
     // day 4 (01-05): -200 → 1300
     // day 8 (01-09): +500 → 1800
@@ -163,6 +163,6 @@ describe('project', () => {
   })
 
   it('throws on negative horizon', () => {
-    expect(() => project(snapshot, [], -1)).toThrow()
+    expect(() => project([snapshot], [], -1)).toThrow()
   })
 })

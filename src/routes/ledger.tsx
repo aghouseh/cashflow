@@ -2,10 +2,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Temporal } from '@js-temporal/polyfill'
-import { readLatestSnapshot } from '../lib/data/snapshot'
+import { listSnapshots } from '../lib/data/snapshot'
 import { listEntries } from '../lib/data/entry'
 import { initDb } from '../lib/db/init'
-import { project, type ProjectionEvent } from '../lib/projection'
+import { project, type ProjectionEvent, type ReconcileMark } from '../lib/projection'
 import { cadenceForRrule } from '../lib/cadence'
 import { requireSnapshot } from '../lib/route-guards'
 
@@ -17,6 +17,7 @@ const LEDGER_HORIZON_DAYS = 730 // 2 years of register
 const ANCHOR_H = 76
 const HEADER_H = 40
 const ROW_H = 56
+const SEAM_H = 56 // reconcile mark row
 const FOCUS_FRACTION = 0.42
 
 const MONTHS_LONG = [
@@ -44,7 +45,8 @@ type EventItem = {
   name: string
   cadenceLabel: string
 }
-type LedgerItem = AnchorItem | HeaderItem | EventItem
+type ReconcileItem = { type: 'reconcile'; y: number; h: number; mark: ReconcileMark }
+type LedgerItem = AnchorItem | HeaderItem | EventItem | ReconcileItem
 
 type LedgerModel = {
   items: LedgerItem[]
@@ -57,29 +59,46 @@ function buildModel(
   events: ProjectionEvent[],
   nameById: Map<string, string>,
   cadenceById: Map<string, string>,
+  marks: ReconcileMark[] = [],
 ): LedgerModel {
-  // Running balance after each event — events arrive already sorted + signed.
-  const running: number[] = []
+  // Separate past (dayIndex ≤ 0) from future (dayIndex > 0) events.
+  // Both arrive sorted ascending by dayIndex from the projection engine.
+  const futureEvents = events.filter((e) => e.dayIndex > 0)
+
+  // Running balance for future events (forward from startBalance).
+  const futureRunning: number[] = []
   let bal = startBalance
-  for (const e of events) {
+  for (const e of futureEvents) {
     bal += e.amount
-    running.push(bal)
+    futureRunning.push(bal)
   }
 
-  // Per-month net for header rows, keyed YYYY-MM.
+  // Per-month net for future header rows.
   const monthNet = new Map<string, number>()
-  for (const e of events) {
+  for (const e of futureEvents) {
     const key = e.date.slice(0, 7)
     monthNet.set(key, (monthNet.get(key) ?? 0) + e.amount)
   }
 
   const items: LedgerItem[] = []
   let y = 0
+
+  // ── anchor row (today) ───────────────────────────────────────────────────
   items.push({ type: 'anchor', y, h: ANCHOR_H })
   y += ANCHOR_H
 
+  // ── reconcile marks at dayIndex ≤ 0 (past / today) ──────────────────────
+  // Show them in ascending order (oldest first, i.e. most negative dayIndex first).
+  // In the ledger scroll they appear right after the anchor at the top.
+  const pastMarks = [...marks].sort((a, b) => a.dayIndex - b.dayIndex)
+  for (const m of pastMarks) {
+    items.push({ type: 'reconcile', y, h: SEAM_H, mark: m })
+    y += SEAM_H
+  }
+
+  // ── future section ───────────────────────────────────────────────────────
   let curKey: string | null = null
-  events.forEach((e, i) => {
+  futureEvents.forEach((e, i) => {
     const key = e.date.slice(0, 7)
     if (key !== curKey) {
       const d = Temporal.PlainDate.from(e.date)
@@ -98,7 +117,7 @@ function buildModel(
       y,
       h: ROW_H,
       event: e,
-      run: running[i],
+      run: futureRunning[i],
       name: nameById.get(e.entryId) ?? e.entryId,
       cadenceLabel: cadenceById.get(e.entryId) ?? '',
     })
@@ -117,16 +136,18 @@ export const Route = createFileRoute('/ledger')({
       return null
     }
     await initDb()
-    const [snapshot, entries] = await Promise.all([readLatestSnapshot(), listEntries()])
-    if (!snapshot) {
+    const [snapshots, entries] = await Promise.all([listSnapshots(), listEntries()])
+    if (snapshots.length === 0) {
       throw new Error('snapshot missing after requireSnapshot')
     }
-    const { events, series } = project(snapshot, entries, LEDGER_HORIZON_DAYS)
+    const snapshot = snapshots[0] // most recent
+    const projection = project(snapshots, entries, LEDGER_HORIZON_DAYS)
+    const { events, series, marks } = projection
     const nameById = new Map(entries.map((e) => [e.id, e.name]))
     const cadenceById = new Map(
       entries.map((e) => [e.id, cadenceForRrule(e.rrule).label]),
     )
-    const model = buildModel(snapshot.balance, events, nameById, cadenceById)
+    const model = buildModel(snapshot.balance, events, nameById, cadenceById, marks)
     return { snapshot, model, series, events }
   },
   component: LedgerPage,
@@ -301,6 +322,13 @@ function LedgerPage() {
                       </div>
                     )
                   }
+                  if (it.type === 'reconcile') {
+                    return (
+                      <div key={vi.key} style={style}>
+                        <SeamRow item={it} asOf={asOf} />
+                      </div>
+                    )
+                  }
                   return (
                     <div key={vi.key} style={style}>
                       <EventRow item={it} focused={focused?.event === it.event} />
@@ -417,6 +445,58 @@ function EventRow({ item, focused }: { item: EventItem; focused: boolean }) {
           {fmtSigned(item.event.amount)}
         </div>
         <div className="mono text-right text-[13px] text-ink-2">{USD.format(item.run)}</div>
+      </div>
+    </div>
+  )
+}
+
+function SeamRow({ item, asOf }: { item: ReconcileItem; asOf: Temporal.PlainDate }) {
+  const { mark } = item
+  const date = asOf.add({ days: mark.dayIndex })
+  const d = date
+  const isPositive = mark.drift >= 0
+  return (
+    <div
+      className="ld-grid px-4"
+      style={{
+        height: SEAM_H,
+        background: 'color-mix(in oklch, var(--cf-accent-soft) 60%, var(--cf-surface))',
+        borderTop: '1px dashed var(--cf-accent)',
+        borderBottom: '1px dashed var(--cf-accent)',
+      }}
+    >
+      <div className="flex flex-col leading-[1.1]">
+        <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-ink-3">
+          {DOW3[d.dayOfWeek - 1]}
+        </span>
+        <span className="mono text-[15px] text-ink">{d.day}</span>
+      </div>
+      {/* broken spine with diamond */}
+      <div className="relative flex h-full items-center justify-center">
+        <span className="absolute top-0 h-[30%] w-px bg-line-2" style={{ left: '50%', transform: 'translateX(-50%)' }} />
+        <span className="absolute bottom-0 h-[30%] w-px bg-line-2" style={{ left: '50%', transform: 'translateX(-50%)' }} />
+        <span
+          className="relative z-[1] h-[11px] w-[11px]"
+          style={{
+            background: 'var(--cf-surface)',
+            border: '1.6px solid var(--cf-accent)',
+            transform: 'rotate(45deg)',
+          }}
+        />
+      </div>
+      <div className="flex min-w-0 flex-col gap-px">
+        <span className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.1em] text-accent-ink">
+          Balance reconciled
+        </span>
+        <span className="font-mono text-[11.5px] text-ink-3">
+          manual snapshot · was {USD.format(mark.before)}
+        </span>
+      </div>
+      <div className={`mono text-right text-[12.5px] ${isPositive ? 'text-in-ink' : 'text-out-ink'}`}>
+        {isPositive ? '▲' : '▼'} {USD.format(Math.abs(mark.drift))}
+      </div>
+      <div className="mono text-right text-[14px] font-semibold text-accent-ink">
+        {USD.format(mark.after)}
       </div>
     </div>
   )

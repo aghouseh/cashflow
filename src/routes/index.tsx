@@ -1,9 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 import { Temporal } from '@js-temporal/polyfill'
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import ChartStrip, { type ChartWindow } from '../components/ChartStrip'
-import { readLatestSnapshot } from '../lib/data/snapshot'
+import ReconcileDialog, { SeamGlyph } from '../components/ReconcileDialog'
+import { listSnapshots, writeSnapshot } from '../lib/data/snapshot'
 import { listEntries } from '../lib/data/entry'
 import { initDb } from '../lib/db/init'
 import { project } from '../lib/projection'
@@ -36,13 +37,14 @@ export const Route = createFileRoute('/')({
     // SSR/prerender has no OPFS — return a sentinel and let the client re-run.
     if (typeof window === 'undefined') return null
     await initDb()
-    const [snapshot, entries] = await Promise.all([
-      readLatestSnapshot(),
+    const [snapshots, entries] = await Promise.all([
+      listSnapshots(),
       listEntries(),
     ])
-    if (!snapshot) throw new Error('snapshot missing after requireSnapshot')
-    const projection = project(snapshot, entries, HORIZON_DAYS_MAX)
-    return { snapshot, entries, projection }
+    if (snapshots.length === 0) throw new Error('snapshot missing after requireSnapshot')
+    const snapshot = snapshots[0] // listSnapshots returns desc; [0] = most recent
+    const projection = project(snapshots, entries, HORIZON_DAYS_MAX)
+    return { snapshot, snapshots, entries, projection }
   },
   component: BalancePage,
 })
@@ -51,10 +53,12 @@ const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' 
 
 function BalancePage() {
   const data = Route.useLoaderData()
+  const router = useRouter()
   const [windowKey, setWindowKey] = useState<WindowKey>(DEFAULT_WINDOW)
   const [pageIndex, setPageIndex] = useState(0)
   const initialScrub = Math.floor(windowDaysFor(DEFAULT_WINDOW) / 2)
   const [scrubOffset, setScrubOffset] = useState(initialScrub)
+  const [showReconcile, setShowReconcile] = useState(false)
   // Shared with ChartStrip so the arrow controls drive the same scroll snap.
   const chartScrollRef = useRef<HTMLDivElement | null>(null)
 
@@ -68,6 +72,12 @@ function BalancePage() {
   }
 
   const { snapshot, entries, projection } = data
+
+  async function commitReconcile(balance: number, asOf: string) {
+    await writeSnapshot({ balance, asOf })
+    setShowReconcile(false)
+    await router.invalidate()
+  }
   const { series: fullSeries, events: fullEvents } = projection
 
   const windowDays = windowDaysFor(windowKey)
@@ -160,12 +170,41 @@ function BalancePage() {
               : `${netChange >= 0 ? '+' : ''}${USD.format(netChange)} vs today · day +${absoluteScrubDay}`}
           </p>
         </div>
-        <div className="text-right text-[12px] text-ink-3">
-          <p className="micro">Lowest in window</p>
-          <p className="mono mt-1 text-ink-2">{USD.format(windowMin)}</p>
-          <p className="mono mt-1">{lowestDate.toString()}</p>
+        <div className="flex flex-col items-end gap-3">
+          <button
+            type="button"
+            onClick={() => setShowReconcile(true)}
+            className="inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 font-mono text-[11.5px] transition-colors"
+            style={{
+              borderColor: `color-mix(in oklch, var(--cf-accent) 55%, var(--cf-line-2))`,
+              background: 'var(--cf-accent-soft)',
+              color: 'var(--cf-accent-ink)',
+            }}
+          >
+            <SeamGlyph size={12} />
+            Update balance
+          </button>
+          {projection.marks.length > 0 && (
+            <p className="micro text-right text-ink-3">
+              {projection.marks.length} reconciled {projection.marks.length === 1 ? 'point' : 'points'}
+            </p>
+          )}
+          <div className="text-right text-[12px] text-ink-3">
+            <p className="micro">Lowest in window</p>
+            <p className="mono mt-1 text-ink-2">{USD.format(windowMin)}</p>
+            <p className="mono mt-1">{lowestDate.toString()}</p>
+          </div>
         </div>
       </section>
+
+      {showReconcile && (
+        <ReconcileDialog
+          projection={projection}
+          primaryAsOf={snapshot.asOf}
+          onCommit={commitReconcile}
+          onCancel={() => setShowReconcile(false)}
+        />
+      )}
 
       <section className="card">
         <div className="mb-3 flex items-center justify-between gap-4">
@@ -231,6 +270,8 @@ function BalancePage() {
           onScrubChange={setScrubOffset}
           onPageChange={changePage}
           scrollRef={chartScrollRef}
+          pastSeries={projection.pastDays > 0 ? projection.pastSeries : undefined}
+          marks={projection.marks.length > 0 ? projection.marks : undefined}
         />
       </section>
 
