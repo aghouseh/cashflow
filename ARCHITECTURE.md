@@ -63,7 +63,7 @@ Rules:
 - Forgotten passphrase = data is gone. No recovery, no email reset.
 - Idle auto-lock is **off by default**, opt-in setting under vault dropdown.
 - TopBar upper-right hosts the vault control: state badge + dropdown (Lock now, Change passphrase, Export, Import, Settings).
-- Persistent **amber 🔓 indicator** when in `none` mode — honest, not alarmist. Same risk class as a finance spreadsheet on Desktop.
+- Persistent 🔓 indicator when in `none` mode — honest, not alarmist. Same risk class as a finance spreadsheet on Desktop.
 - Aggressive backup-nag in `none` mode (e.g. "you haven't exported in 30 days").
 
 Crypto details (`src/lib/vault/crypto.ts`):
@@ -153,7 +153,6 @@ Per mock README, explicitly deferred:
 - Multi-user, real accounts
 - Real banking integrations
 - Scenarios (named what-ifs)
-- Past actuals reconciliation
 - Multi-currency / FX
 - Categories beyond a free-text field + tags
 - Cross-device sync

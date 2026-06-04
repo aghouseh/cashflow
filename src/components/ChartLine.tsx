@@ -10,7 +10,7 @@
 // curve at each event day.
 
 import { Temporal } from '@js-temporal/polyfill'
-import type { ProjectionEvent } from '#/lib/projection'
+import type { ProjectionEvent, ReconcileMark } from '#/lib/projection'
 
 const VBW = 1180
 const VBH = 320
@@ -39,25 +39,18 @@ type Props = {
   series: number[]
   events: ProjectionEvent[]
   asOf: string // ISO YYYY-MM-DD — anchor date (day 0 in absolute terms)
-  // First-day offset of the displayed series from `asOf`. Page 0 = 0.
   dayOffset?: number
-  // 0..series.length-1 within the displayed window. Undefined = no scrub.
   scrubOffset?: number
-  // Optional y-axis overrides — used by ChartStrip to share a common scale
-  // across the prev/current/next windows so the line is continuous across
-  // window seams during a slide.
   yMin?: number
   yMax?: number
-  // When true, render the tooltip pill at the scrub position.
   tooltipActive?: boolean
-  // When false, skip rendering the y-axis gridlines + dollar labels — the
-  // ChartStrip lifts them into a static overlay so they don't slide with the
-  // strip during paging.
   showYAxis?: boolean
-  // Override horizontal padding. ChartStrip passes 0 for both so the inner
-  // charts tile seamlessly across window seams.
   padL?: number
   padR?: number
+  // Past window + reconcile seams (only rendered on page 0).
+  // pastSeries[0] = origin date balance, pastSeries[last] = today's before-correction value.
+  pastSeries?: number[]
+  marks?: ReconcileMark[]
 }
 
 function yGridValues(yMin: number, yMax: number): number[] {
@@ -154,55 +147,125 @@ export default function ChartLine({
   showYAxis = true,
   padL = PAD_L_DEFAULT,
   padR = PAD_R_DEFAULT,
+  pastSeries,
+  marks = [],
 }: Props) {
-  const lastIdx = series.length - 1
+  const forwardDays = series.length - 1      // windowDays
   const innerW = VBW - padL - padR
-  const xOf = (day: number) => padL + (innerW * day) / lastIdx
 
-  const auto = seriesYBounds(series)
-  const yMin = yMinOverride ?? auto.yMin
-  const yMax = yMaxOverride ?? auto.yMax
+  // Past window is active only on page 0 when pastSeries has content.
+  const hasPast = dayOffset === 0 && !!pastSeries && pastSeries.length > 1 && marks.length > 0
+  const pastDays = hasPast ? pastSeries!.length - 1 : 0
+  const totalDomainDays = pastDays + forwardDays  // total days across x axis
+
+  // xOf maps a "today-relative" day index to SVG x coordinate.
+  // In forward-only mode: day 0 = left edge (= first element of series window).
+  // In extended mode: day 0 = today = somewhere in the middle.
+  const xOf = hasPast
+    ? (day: number) => padL + (innerW * (day + pastDays)) / totalDomainDays
+    : (day: number) => padL + (innerW * day) / forwardDays
+
+  // Value at a today-relative day index.
+  const valueAt = (day: number): number => {
+    if (hasPast && day <= 0) {
+      const idx = pastDays + day
+      return pastSeries![Math.max(0, Math.min(pastSeries!.length - 1, idx))]
+    }
+    return series[Math.max(0, Math.min(forwardDays, day))]
+  }
+
+  const allValues = hasPast ? [...pastSeries!, ...series] : series
+  const autoAll = { yMin: Math.min(...allValues), yMax: Math.max(...allValues) }
+  const yMin = yMinOverride ?? Math.floor((autoAll.yMin - 500) / 500) * 500
+  const yMax = yMaxOverride ?? Math.ceil((autoAll.yMax + 500) / 500) * 500
   const yRange = yMax - yMin || 1
   const yOf = (v: number) => PAD_T + INNER_H - ((v - yMin) / yRange) * INNER_H
 
-  const linePath = series.map((v, i) => `${i === 0 ? 'M' : 'L'}${xOf(i)},${yOf(v)}`).join(' ')
-  const areaPath = `${linePath} L${xOf(lastIdx)},${PAD_T + INNER_H} L${xOf(0)},${PAD_T + INNER_H} Z`
+  // ── build path segments, breaking at each seam mark ─────────────────────
+  // Each mark splits the line: current segment ends at mark.before (projected),
+  // a dashed vertical jump renders the correction, new segment starts at mark.after.
+  const marksByDay = new Map(marks.map((m) => [m.dayIndex, m]))
+  const domainStart = hasPast ? -pastDays : 0
+  const domainEnd = forwardDays
 
-  // Y gridlines — ~5 lines across the range, rounded to $1k.
+  type Point = [number, number]
+  const segs: Point[][] = []
+  let cur: Point[] = []
+  for (let d = domainStart; d <= domainEnd; d++) {
+    const mark = marksByDay.get(d)
+    if (mark) {
+      cur.push([xOf(d), yOf(mark.before)])
+      segs.push(cur)
+      cur = [[xOf(d), yOf(mark.after)]]
+    } else {
+      cur.push([xOf(d), yOf(valueAt(d))])
+    }
+  }
+  if (cur.length) segs.push(cur)
+
+  const toSvgPath = (pts: Point[]) =>
+    pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ')
+
+  const lastSeg = segs[segs.length - 1]
+  const firstSeg = segs[0]
+  const areaD =
+    segs.map(toSvgPath).join(' ') +
+    ` L${lastSeg[lastSeg.length - 1][0]},${PAD_T + INNER_H}` +
+    ` L${firstSeg[0][0]},${PAD_T + INNER_H} Z`
+
+  // ── Y axis grid ──────────────────────────────────────────────────────────
   const gridStep = Math.max(1000, Math.ceil(yRange / 5 / 1000) * 1000)
   const gridLines: number[] = []
   for (let v = Math.ceil(yMin / gridStep) * gridStep; v < yMax; v += gridStep) gridLines.push(v)
 
-  // Month ticks — label the first-of-each-month only. Labeling day 0 of the
-  // window too created duplicate labels at every page seam (prev's right
-  // edge and current's left edge both fell within the same calendar month).
-  const start = Temporal.PlainDate.from(asOf)
+  // ── month ticks ───────────────────────────────────────────────────────────
+  const today = Temporal.PlainDate.from(asOf)
   const monthTicks: { day: number; label: string }[] = []
-  for (let d = 0; d <= lastIdx; d++) {
-    const date = start.add({ days: dayOffset + d })
-    if (date.day === 1) {
-      monthTicks.push({ day: d, label: MONTHS[date.month - 1] })
+  // In forward-only mode, iterate window-relative (0..forwardDays) adjusted by dayOffset.
+  // In extended mode, iterate today-relative (-pastDays..forwardDays).
+  if (hasPast) {
+    for (let d = -pastDays; d <= forwardDays; d++) {
+      const date = today.add({ days: d })
+      if (date.day === 1) monthTicks.push({ day: d, label: MONTHS[date.month - 1] })
+    }
+  } else {
+    for (let d = 0; d <= forwardDays; d++) {
+      const date = today.add({ days: dayOffset + d })
+      if (date.day === 1) monthTicks.push({ day: d, label: MONTHS[date.month - 1] })
     }
   }
 
-  // NOW marker shows only when the anchor day (absolute day 0) falls inside
-  // the displayed window. For pages > 0 or windows in the past, it's hidden.
-  const nowInWindow = dayOffset === 0
-  const nowX = xOf(0)
+  // ── NOW marker ────────────────────────────────────────────────────────────
+  // In forward-only mode: show when dayOffset === 0 (day 0 of window = today).
+  // In extended mode: always at xOf(0) (= middle of chart).
+  const nowInWindow = hasPast || dayOffset === 0
+  const nowX = hasPast ? xOf(0) : xOf(0)
 
+  // ── past shade ────────────────────────────────────────────────────────────
+  const pastShadeW = hasPast ? nowX - padL : 0
+
+  // ── scrub ─────────────────────────────────────────────────────────────────
+  // Scrub stays in the forward window only (0..forwardDays).
+  // In extended mode, scrubOffset=0 = today = xOf(0).
   const hasScrub = scrubOffset !== undefined
-  const scrubX = hasScrub ? xOf(scrubOffset!) : 0
-  const scrubY = hasScrub ? yOf(series[scrubOffset!]) : 0
-  const scrubDate = hasScrub ? start.add({ days: dayOffset + scrubOffset! }) : null
+  const scrubDayRel = hasScrub ? scrubOffset! : 0 // today-relative
+  const scrubX = hasScrub ? xOf(hasPast ? scrubDayRel : scrubDayRel) : 0
+  const scrubVal = hasScrub ? series[scrubOffset!] : 0
+  const scrubY = hasScrub ? yOf(scrubVal) : 0
+  const scrubDate = hasScrub ? today.add({ days: dayOffset + scrubOffset! }) : null
   const scrubLabel =
     scrubDate !== null
-      ? `${MONTHS[scrubDate.month - 1]} ${scrubDate.day} · ${USD.format(series[scrubOffset!])}`
+      ? `${MONTHS[scrubDate.month - 1]} ${scrubDate.day} · ${USD.format(scrubVal)}`
       : ''
 
-  // Filter events to the visible window + re-base their dayIndex to series-local.
-  const windowEvents = events
-    .filter((e) => e.dayIndex >= dayOffset && e.dayIndex <= dayOffset + lastIdx)
-    .map((e) => ({ ...e, localDay: e.dayIndex - dayOffset }))
+  // ── visible events ────────────────────────────────────────────────────────
+  // In extended mode: include past events (dayIndex ≤ 0) + future events.
+  // In forward-only mode: only events inside the current window.
+  const visibleEvents = hasPast
+    ? events.filter((e) => e.dayIndex >= -pastDays && e.dayIndex <= forwardDays)
+    : events
+        .filter((e) => e.dayIndex >= dayOffset && e.dayIndex <= dayOffset + forwardDays)
+        .map((e) => ({ ...e, dayIndex: e.dayIndex - dayOffset }))
 
   return (
     <div className="relative w-full">
@@ -241,107 +304,87 @@ export default function ChartLine({
         {showYAxis &&
           gridLines.map((v) => (
             <g key={v}>
-              <line
-                x1={padL}
-                y1={yOf(v)}
-                x2={VBW - padR}
-                y2={yOf(v)}
-                stroke="var(--cf-line)"
-                strokeDasharray="2 5"
-              />
-              <text
-                x={padL - 8}
-                y={yOf(v) + 3.5}
-                textAnchor="end"
-                fontFamily="var(--cf-font-mono)"
-                fontSize="10"
-                fill="var(--cf-ink-3)"
-              >
+              <line x1={padL} y1={yOf(v)} x2={VBW - padR} y2={yOf(v)} stroke="var(--cf-line)" strokeDasharray="2 5" />
+              <text x={padL - 8} y={yOf(v) + 3.5} textAnchor="end" fontFamily="var(--cf-font-mono)" fontSize="10" fill="var(--cf-ink-3)">
                 ${(v / 1000).toFixed(0)}k
               </text>
             </g>
           ))}
 
-        <path d={areaPath} fill="url(#chartline-area)" />
-        <path d={linePath} fill="none" stroke="var(--cf-ink)" strokeWidth="1.5" />
+        {/* past shade */}
+        {hasPast && pastShadeW > 0 && (
+          <rect x={padL} y={PAD_T} width={pastShadeW} height={INNER_H} fill="var(--cf-ink)" opacity="0.025" />
+        )}
 
-        {windowEvents.map((ev) => (
-          <circle
-            key={`${ev.entryId}-${ev.date}`}
-            cx={xOf(ev.localDay)}
-            cy={yOf(series[ev.localDay])}
-            r="2.4"
-            fill="var(--cf-surface)"
-            stroke={ev.kind === 'IN' ? 'var(--cf-in)' : 'var(--cf-out)'}
-            strokeWidth="1.4"
-          />
+        <path d={areaD} fill="url(#chartline-area)" />
+
+        {/* line segments (may be multiple when seams present) */}
+        {segs.map((seg, i) => (
+          <path key={i} d={toSvgPath(seg)} fill="none" stroke="var(--cf-ink)" strokeWidth="1.5" strokeLinecap="round" />
         ))}
 
+        {/* event dots */}
+        {visibleEvents.map((ev) => {
+          const cx = hasPast ? xOf(ev.dayIndex) : xOf(ev.dayIndex)
+          const val = hasPast ? valueAt(ev.dayIndex) : series[ev.dayIndex] ?? series[0]
+          return (
+            <circle
+              key={`${ev.entryId}-${ev.date}`}
+              cx={cx}
+              cy={yOf(val)}
+              r="2.4"
+              fill="var(--cf-surface)"
+              stroke={ev.kind === 'IN' ? 'var(--cf-in)' : 'var(--cf-out)'}
+              strokeWidth="1.4"
+            />
+          )
+        })}
+
+        {/* reconcile seam markers */}
+        {marks.map((m) => {
+          const x = xOf(m.dayIndex)
+          const yB = yOf(m.before)
+          const yA = yOf(m.after)
+          return (
+            <g key={m.snapshotId}>
+              {/* dashed vertical jump: from projected to asserted */}
+              <line x1={x} y1={yB} x2={x} y2={yA} stroke="var(--cf-accent)" strokeWidth="1.6" strokeDasharray="3 3" />
+              {/* hollow circle at the projected (before) point */}
+              <circle cx={x} cy={yB} r="2.4" fill="var(--cf-surface)" stroke="var(--cf-line-2)" strokeWidth="1.3" />
+              {/* hollow diamond at the asserted (after) point */}
+              <rect
+                x={x - 4.6} y={yA - 4.6} width="9.2" height="9.2"
+                transform={`rotate(45 ${x} ${yA})`}
+                fill="var(--cf-surface)" stroke="var(--cf-accent)" strokeWidth="1.8"
+              />
+            </g>
+          )
+        })}
+
+        {/* NOW marker */}
         {nowInWindow && (
           <>
-            <line
-              x1={nowX}
-              y1={PAD_T - 2}
-              x2={nowX}
-              y2={PAD_T + INNER_H + 4}
-              stroke="var(--cf-ink-3)"
-              strokeDasharray="3 3"
-            />
-            <text
-              x={nowX + 6}
-              y={PAD_T + 10}
-              fontFamily="var(--cf-font-mono)"
-              fontSize="10"
-              fontWeight="500"
-              fill="var(--cf-ink-2)"
-              letterSpacing="0.09em"
-            >
+            <line x1={nowX} y1={PAD_T - 2} x2={nowX} y2={PAD_T + INNER_H + 4} stroke="var(--cf-ink-3)" strokeDasharray="3 3" />
+            <text x={nowX + 6} y={PAD_T + 10} fontFamily="var(--cf-font-mono)" fontSize="10" fontWeight="500" fill="var(--cf-ink-2)" letterSpacing="0.09em">
               NOW
             </text>
           </>
         )}
 
+        {/* month ticks */}
         {monthTicks.map((t) => (
-          <text
-            key={t.day}
-            x={xOf(t.day)}
-            y={PAD_T + INNER_H + 18}
-            textAnchor="middle"
-            fontFamily="var(--cf-font-mono)"
-            fontSize="10"
-            fill="var(--cf-ink-3)"
-          >
+          <text key={t.day} x={xOf(t.day)} y={PAD_T + INNER_H + 18} textAnchor="middle" fontFamily="var(--cf-font-mono)" fontSize="10" fill="var(--cf-ink-3)">
             {t.label}
           </text>
         ))}
 
+        {/* scrub marker */}
         {hasScrub && (
           <>
-            <line
-              x1={scrubX}
-              y1={PAD_T - 8}
-              x2={scrubX}
-              y2={PAD_T + INNER_H + 18}
-              stroke="var(--cf-accent)"
-              strokeWidth="1.6"
-            />
-            <circle
-              cx={scrubX}
-              cy={scrubY}
-              r="8"
-              fill="var(--cf-surface)"
-              stroke="var(--cf-accent)"
-              strokeWidth="2.2"
-            />
+            <line x1={scrubX} y1={PAD_T - 8} x2={scrubX} y2={PAD_T + INNER_H + 18} stroke="var(--cf-accent)" strokeWidth="1.6" />
+            <circle cx={scrubX} cy={scrubY} r="8" fill="var(--cf-surface)" stroke="var(--cf-accent)" strokeWidth="2.2" />
             <circle cx={scrubX} cy={scrubY} r="3" fill="var(--cf-accent)" />
-            <rect
-              x={scrubX - 5}
-              y={PAD_T + INNER_H + 12}
-              width="10"
-              height="10"
-              transform={`rotate(45 ${scrubX} ${PAD_T + INNER_H + 17})`}
-              fill="var(--cf-accent)"
-            />
+            <rect x={scrubX - 5} y={PAD_T + INNER_H + 12} width="10" height="10" transform={`rotate(45 ${scrubX} ${PAD_T + INNER_H + 17})`} fill="var(--cf-accent)" />
           </>
         )}
       </svg>

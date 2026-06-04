@@ -19,7 +19,7 @@ import ChartLine, {
   YAxisGridlines,
   YAxisLabels,
 } from './ChartLine'
-import type { ProjectionEvent } from '#/lib/projection'
+import type { ProjectionEvent, ReconcileMark } from '#/lib/projection'
 
 const GUTTER_PX = CHART_GEOMETRY.PAD_L_DEFAULT
 // Debounce window for treating scrolling as "settled" (fallback for browsers
@@ -35,14 +35,15 @@ export type ChartWindow = {
 type Props = {
   asOf: string
   current: ChartWindow
-  prev?: ChartWindow // undefined at page 0
-  next?: ChartWindow // undefined at maxPage
+  prev?: ChartWindow
+  next?: ChartWindow
   scrubOffset: number
   onScrubChange: (offset: number) => void
   onPageChange: (delta: 1 | -1) => void
-  // Shared with the parent so the header's arrow controls can drive the same
-  // scroll container (they scrollBy one window; the settle handler commits).
   scrollRef: React.RefObject<HTMLDivElement | null>
+  // Past window + seam marks, shown only on page 0.
+  pastSeries?: number[]
+  marks?: ReconcileMark[]
 }
 
 export default function ChartStrip({
@@ -54,6 +55,8 @@ export default function ChartStrip({
   onScrubChange,
   onPageChange,
   scrollRef,
+  pastSeries,
+  marks,
 }: Props) {
   const [tooltipActive, setTooltipActive] = useState(false)
   const [containerWidth, setContainerWidth] = useState(0)
@@ -251,6 +254,8 @@ export default function ChartStrip({
                 showYAxis={false}
                 padL={0}
                 padR={0}
+                pastSeries={slide.isCurrent && slide.window.dayOffset === 0 ? pastSeries : undefined}
+                marks={slide.isCurrent && slide.window.dayOffset === 0 ? marks : undefined}
               />
             </div>
           ))}
