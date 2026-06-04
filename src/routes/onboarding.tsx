@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { track } from '../lib/analytics/index.js'
+import { useRef, useState } from 'react'
 import { seedDevData } from '../lib/dev/seed'
 import { useDbReady } from '../lib/db/ready'
 import { writeSnapshot } from '../lib/data/snapshot'
@@ -57,15 +58,24 @@ function OnboardingPage() {
   const [expenseDraft, setExpenseDraft] = useState<EntryDraft>(emptyEntryDraft(DEFAULT_EXPENSE_NAME))
   const [incomeId, setIncomeId] = useState<string | null>(null)
   const [expenseId, setExpenseId] = useState<string | null>(null)
+  const startedRef = useRef(false)
 
   if (!ready) {
     return <p className="micro mt-12 text-center">Initializing…</p>
   }
 
+  if (!startedRef.current) {
+    startedRef.current = true
+    track('onboarding_started')
+  }
+
   function next() {
     if (step === 'snapshot') setStep('income')
     else if (step === 'income') setStep('expense')
-    else navigate({ to: '/' })
+    else {
+      track('onboarding_complete')
+      navigate({ to: '/' })
+    }
   }
 
   function back() {

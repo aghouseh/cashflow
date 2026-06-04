@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { track } from '../lib/analytics/index.js'
 import { useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Temporal } from '@js-temporal/polyfill'
@@ -254,6 +255,7 @@ function LedgerPage() {
 
   async function commitInline(balance: number, snapshotAsOf: string) {
     await writeSnapshot({ balance, asOf: snapshotAsOf })
+    track('reconcile_balance', { source: 'ledger' })
     setInserterOpen(false)
     await router.invalidate()
   }

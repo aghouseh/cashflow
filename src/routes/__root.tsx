@@ -2,9 +2,11 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { useEffect, useState } from 'react'
+import { PostHogProvider } from '@posthog/react'
 import LockedScreen from '../components/vault/LockedScreen'
 import TopBar from '../components/TopBar'
 import { useVaultMode } from '../lib/vault/use-vault'
+import { Sentry } from '../lib/analytics/index.js'
 
 import appCss from '../styles.css?url'
 
@@ -45,13 +47,26 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {showLock ? (
-          <LockedScreen onUnlocked={() => setShowLock(false)}>
-            {appShell}
-          </LockedScreen>
-        ) : (
-          appShell
-        )}
+        <PostHogProvider
+          apiKey={import.meta.env.VITE_POSTHOG_PROJECT_TOKEN!}
+          options={{
+            api_host: '/ingest',
+            ui_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.posthog.com',
+            defaults: '2025-05-24',
+            capture_exceptions: true,
+            debug: import.meta.env.DEV,
+          }}
+        >
+          <Sentry.ErrorBoundary fallback={<AppError />}>
+            {showLock ? (
+              <LockedScreen onUnlocked={() => setShowLock(false)}>
+                {appShell}
+              </LockedScreen>
+            ) : (
+              appShell
+            )}
+          </Sentry.ErrorBoundary>
+        </PostHogProvider>
         <TanStackDevtools
           config={{ position: 'bottom-right' }}
           plugins={[
@@ -61,5 +76,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
+  )
+}
+
+function AppError() {
+  return (
+    <div style={{ padding: '2rem', fontFamily: 'monospace', fontSize: '13px' }}>
+      <p>Something went wrong. Reload to try again.</p>
+      <button type="button" onClick={() => window.location.reload()} style={{ marginTop: '1rem' }}>
+        Reload
+      </button>
+    </div>
   )
 }

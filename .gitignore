@@ -16,3 +16,4 @@ todos.json
 # Design handoff / mock bundles (reference only — not part of the app)
 mocks/
 cashflow-design-system-v1.zip
+.env.local
