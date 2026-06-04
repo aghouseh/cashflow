@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { track } from '../lib/analytics/index.js'
 import { useState } from 'react'
 import { Pencil, Trash2, Pause, Play } from 'lucide-react'
 import ImportModal from '../components/ImportModal'
@@ -115,8 +116,10 @@ function EntriesPage() {
     }
     if (form.id) {
       await updateEntry(form.id, payload)
+      track('entry_update', { kind: payload.kind, cadence: form.cadence })
     } else {
       await createEntry(payload)
+      track('entry_create', { kind: payload.kind, cadence: form.cadence })
     }
     setForm(null)
     await router.invalidate()
@@ -124,6 +127,7 @@ function EntriesPage() {
 
   async function onDelete(id: string) {
     await deleteEntry(id)
+    track('entry_delete')
     if (form?.id === id) {
       setForm(null)
     }
@@ -132,6 +136,7 @@ function EntriesPage() {
 
   async function onTogglePause(e: Entry) {
     await setEntryPaused(e.id, !e.paused)
+    track('entry_pause', { paused: !e.paused })
     await router.invalidate()
   }
 

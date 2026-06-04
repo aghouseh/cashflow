@@ -8,7 +8,10 @@ import tailwindcss from '@tailwindcss/vite'
 import sqlocal from 'sqlocal/vite'
 
 const config = defineConfig({
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    tsconfigPaths: true,
+    dedupe: ['react', 'react-dom'],
+  },
   // rrule v2 has no `exports` field and ships CJS as `main` + ESM as `module`.
   // Bundlers see ESM (named exports work); Node ESM at runtime sees CJS
   // (only `default` works), so a plain `import { rrulestr } from 'rrule'`
@@ -28,6 +31,32 @@ const config = defineConfig({
       host: 'cashflow.dev.houza.org',
       protocol: 'wss',
       clientPort: 443,
+    },
+    proxy: {
+      '/tunnel': {
+        target: 'https://o4511506017615872.ingest.us.sentry.io',
+        changeOrigin: true,
+        rewrite: () => '/api/4511506024759296/envelope/',
+        secure: true,
+      },
+      '/ingest/static': {
+        target: 'https://us-assets.i.posthog.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ingest/, ''),
+        secure: false,
+      },
+      '/ingest/array': {
+        target: 'https://us-assets.i.posthog.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ingest/, ''),
+        secure: false,
+      },
+      '/ingest': {
+        target: 'https://us.i.posthog.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ingest/, ''),
+        secure: false,
+      },
     },
   },
   plugins: [

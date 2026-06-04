@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import ModalShell from './vault/ModalShell'
 import { importJson, type CashflowExport, EXPORT_VERSION, ImportError } from '../lib/data/transfer'
+import { track } from '../lib/analytics/index.js'
 
 type Props = {
   open: boolean
@@ -81,6 +82,7 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
     setError(null)
     try {
       await importJson(parsed, mode)
+      track('data_imported', { mode, entry_count: parsed.entries.length })
       setStage('done')
       onImported()
     } catch (err) {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ModalShell from './vault/ModalShell'
 import { exportJson, exportCsv } from '../lib/data/transfer'
+import { track } from '../lib/analytics/index.js'
 
 type Props = {
   open: boolean
@@ -30,6 +31,7 @@ export default function ExportModal({ open, onClose }: Props) {
         const csv = await exportCsv()
         download(csv, `cashflow-entries-${date}.csv`, 'text/csv')
       }
+      track('data_exported', { format })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Export failed.')

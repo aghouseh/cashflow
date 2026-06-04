@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { track } from '../lib/analytics/index.js'
 import { useRef, useState } from 'react'
 import { Temporal } from '@js-temporal/polyfill'
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
@@ -75,6 +76,7 @@ function BalancePage() {
 
   async function commitReconcile(balance: number, asOf: string) {
     await writeSnapshot({ balance, asOf })
+    track('reconcile_balance', { source: 'balance' })
     setShowReconcile(false)
     await router.invalidate()
   }
@@ -128,6 +130,7 @@ function BalancePage() {
 
   function changeWindow(next: WindowKey) {
     if (next === windowKey) return
+    track('balance_window_changed', { window: next })
     setWindowKey(next)
     setPageIndex(0)
     setScrubOffset(Math.floor(windowDaysFor(next) / 2))

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { unlock } from '../../lib/vault'
 import ModalShell from './ModalShell'
+import { track } from '../../lib/analytics/index.js'
 
 type Props = {
   open: boolean
@@ -25,6 +26,7 @@ export default function UnlockModal({ open, onClose }: Props) {
     setError(null)
     try {
       await unlock(pass)
+      track('vault_unlocked')
       reset()
       onClose()
     } catch {

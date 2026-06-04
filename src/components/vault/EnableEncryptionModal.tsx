@@ -2,6 +2,7 @@ import { Children, cloneElement, isValidElement, useEffect, useId, useState } fr
 import { enableEncryption } from '../../lib/vault'
 import { probeVaultStorage, type StorageProbeResult } from '../../lib/vault/storage-probe'
 import ModalShell from './ModalShell'
+import { track } from '../../lib/analytics/index.js'
 
 type Props = {
   open: boolean
@@ -44,6 +45,7 @@ export default function EnableEncryptionModal({ open, onClose }: Props) {
     setError(null)
     try {
       await enableEncryption(pass)
+      track('vault_encryption_enabled')
       reset()
       onClose()
     } catch (err) {
