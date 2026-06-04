@@ -165,4 +165,34 @@ describe('project', () => {
   it('throws on negative horizon', () => {
     expect(() => project([snapshot], [], -1)).toThrow()
   })
+
+  it('multi-snapshot: drift re-bases series forward', () => {
+    // Origin: Jan 1 at $1000. Entry: +$100 on Jan 5 (day 4).
+    // Reconcile snapshot Jan 3 (day 2 after origin): user asserts $1200.
+    //   ghost(2) = 1000 (no events yet) → drift = +200
+    // After Jan 3: series runs from $1200 instead of $1000.
+    //   actual(4) = ghost(4) + drift = 1100 + 200 = 1300 but series[0] = primary.balance
+    // Primary snapshot = the reconcile at Jan 3 → series[0] = 1200.
+    // Forward: entry fires day 2 relative to Jan 3 (= Jan 5) → series[2] = 1300.
+    const origin = { id: 'origin', balance: 1000, asOf: '2026-01-01' }
+    const reconcile = { id: 'recon', balance: 1200, asOf: '2026-01-03' }
+    const entry = baseEntry({ startDate: '2026-01-05', amount: 100, kind: 'IN' })
+    const { series, marks, pastSeries, pastDays } = project([origin, reconcile], [entry], 7)
+
+    // Primary is the reconcile (most recent), so series[0] = 1200
+    expect(series[0]).toBe(1200)
+    // Entry on Jan 5 = 2 days after reconcile Jan 3 → series[2] = 1300
+    expect(series[2]).toBe(1300)
+
+    // One mark: the reconcile
+    expect(marks).toHaveLength(1)
+    expect(marks[0].drift).toBe(200)   // 1200 − 1000 (ghost at day 2 = 1000)
+    expect(marks[0].before).toBe(1000)
+    expect(marks[0].after).toBe(1200)
+
+    // pastSeries covers origin → reconcile (2 days)
+    expect(pastDays).toBe(2)
+    expect(pastSeries[0]).toBe(1000) // origin balance
+    expect(pastSeries[2]).toBe(1200) // reconcile balance (after correction)
+  })
 })

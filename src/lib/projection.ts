@@ -40,8 +40,12 @@ export type ReconcileMark = {
 
 export type Projection = {
   events: ProjectionEvent[]
-  series: number[]      // [0..horizonDays] from primary.asOf forward
+  series: number[]      // [0..horizonDays] from primary.asOf forward; re-based at each mark
   marks: ReconcileMark[]
+  // Ghost series — pure single-origin projection, no drift applied.
+  // ghostSeries[i] = balance at origin.asOf + i days, ignoring all reconcile marks.
+  // Length: pastDays + horizonDays + 1 (covers the full chart domain).
+  ghostSeries: number[]
   // Past window — non-empty when there are ≥ 2 snapshots.
   pastSeries: number[]  // actual values [0..pastDays]; index 0 = origin.asOf, last = primary.asOf
   pastDays: number      // 0 when single snapshot (no history to show)
@@ -182,7 +186,10 @@ export function project(
     series[day] = running
   }
 
-  return { events, series, marks, pastSeries, pastDays }
+  // ghostSeries: pure origin projection over the full domain (pastDays + horizonDays)
+  const ghostSeries = Array.from(ghostAbs)
+
+  return { events, series, marks, ghostSeries, pastSeries, pastDays }
 }
 
 // Convenience overload: single snapshot (backwards-compatible call sites).

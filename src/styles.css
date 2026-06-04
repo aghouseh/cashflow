@@ -321,7 +321,7 @@ body {
   align-items: center;
   justify-content: center;
   background: var(--cf-accent-soft);
-  border: 1px solid color-mix(in oklch, var(--cf-accent) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cf-accent) 45%, transparent);
   color: var(--cf-accent-ink);
 }
 .lock-mark.unlocked {

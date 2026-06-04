@@ -20,6 +20,8 @@ import {
 } from '../lib/cadence'
 import type { Entry } from '../lib/db/schema'
 import { requireSnapshot } from '../lib/route-guards'
+import { listSnapshots } from '../lib/data/snapshot'
+import type { BalanceSnapshot } from '../lib/db/schema'
 
 export const Route = createFileRoute('/entries')({
   beforeLoad: requireSnapshot,
@@ -28,7 +30,8 @@ export const Route = createFileRoute('/entries')({
       return null
     }
     await initDb()
-    return { entries: await listEntries() }
+    const [entries, snapshots] = await Promise.all([listEntries(), listSnapshots()])
+    return { entries, snapshots }
   },
   component: EntriesPage,
 })
@@ -84,7 +87,7 @@ function EntriesPage() {
     return <div className="card text-[12px] text-ink-3">Loading…</div>
   }
 
-  const { entries } = data
+  const { entries, snapshots } = data
   const active = entries.filter((e) => !e.paused)
 
   const monthlyIn = active
@@ -209,6 +212,8 @@ function EntriesPage() {
         onDelete={onDelete}
         onTogglePause={onTogglePause}
       />
+
+      <SnapshotList snapshots={snapshots} />
 
       <ImportModal
         open={showImport}
@@ -486,6 +491,54 @@ function Field({
         {hint && <span className="ml-1.5 normal-case text-ink-4">· {hint}</span>}
       </label>
       {children}
+    </div>
+  )
+}
+
+// ── Balance snapshots listing ─────────────────────────────────────────────────
+// Read-only audit trail of every reconcile point. Sorted newest first.
+
+function SnapshotList({ snapshots }: { snapshots: BalanceSnapshot[] }) {
+  if (snapshots.length === 0) return null
+
+  return (
+    <div className="card flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <p className="micro">Balance snapshots · {snapshots.length}</p>
+      </div>
+
+      <div className="flex flex-col">
+        {snapshots.map((s, i) => {
+          const prev = snapshots[i + 1]
+          const drift = prev ? s.balance - prev.balance : null
+          const driftSign = drift != null ? (drift >= 0 ? '+' : '−') : null
+          return (
+            <div
+              key={s.id}
+              className="flex items-baseline justify-between border-b border-line py-2.5 last:border-b-0"
+            >
+              <div className="flex flex-col gap-0.5">
+                <span className="font-mono text-[12.5px] text-ink-2">
+                  {new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(s.asOf + 'T00:00:00'))}
+                </span>
+                {s.accountLabel && (
+                  <span className="font-mono text-[11px] text-ink-3">{s.accountLabel}</span>
+                )}
+              </div>
+              <div className="flex items-baseline gap-3">
+                {drift != null && Math.abs(drift) >= 0.01 && (
+                  <span className={`font-mono text-[11.5px] ${drift >= 0 ? 'text-in-ink' : 'text-out-ink'}`}>
+                    {driftSign}{USD.format(Math.abs(drift))}
+                  </span>
+                )}
+                <span className="font-mono text-[13.5px] font-medium text-ink">
+                  {USD.format(s.balance)}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

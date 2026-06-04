@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { Temporal } from '@js-temporal/polyfill'
 import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import ChartStrip, { type ChartWindow } from '../components/ChartStrip'
-import ReconcileDialog, { SeamGlyph } from '../components/ReconcileDialog'
+import { SeamGlyph } from '../components/ReconcileDialog'
 import { listSnapshots, writeSnapshot } from '../lib/data/snapshot'
 import { listEntries } from '../lib/data/entry'
 import { initDb } from '../lib/db/init'
@@ -174,9 +174,9 @@ function BalancePage() {
           <button
             type="button"
             onClick={() => setShowReconcile(true)}
-            className="inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 font-mono text-[11.5px] transition-colors"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-field border px-3 py-1.5 font-mono text-[11.5px] transition-colors hover:opacity-80"
             style={{
-              borderColor: `color-mix(in oklch, var(--cf-accent) 55%, var(--cf-line-2))`,
+              borderColor: `color-mix(in srgb, var(--cf-accent) 55%, var(--cf-line-2))`,
               background: 'var(--cf-accent-soft)',
               color: 'var(--cf-accent-ink)',
             }}
@@ -197,8 +197,9 @@ function BalancePage() {
         </div>
       </section>
 
+      {/* Inline reconcile drawer — slides in below the hero, replaces the v1 modal. */}
       {showReconcile && (
-        <ReconcileDialog
+        <BalanceInlineDrawer
           projection={projection}
           primaryAsOf={snapshot.asOf}
           onCommit={commitReconcile}
@@ -316,5 +317,210 @@ function BalancePage() {
         </div>
       </section>
     </div>
+  )
+}
+
+// ── Inline reconcile drawer (Balance view) ───────────────────────────────────
+// Renders as a card in the normal document flow, directly below the hero.
+// Corrections are always for PAST dates — never today or primary date.
+// Presets are relative to calendar today, clamped to before the primary snapshot.
+
+const CORRECTION_DAY_OFFSETS = [-1, -3, -7, -14] as const
+const CORRECTION_PRESET_LABELS: Record<number, string> = {
+  '-1': 'Yesterday',
+  '-3': '3 days ago',
+  '-7': 'Last week',
+  '-14': '2 weeks ago',
+}
+
+function correctedProjectedAt(
+  projection: import('../lib/projection').Projection,
+  primaryDate: Temporal.PlainDate,
+  selDate: Temporal.PlainDate,
+): number {
+  // dayIndex of selDate relative to primary
+  const dayIndex = primaryDate.until(selDate).total({ unit: 'day' })
+  if (dayIndex >= 0) return projection.series[Math.min(dayIndex, projection.series.length - 1)]
+  const idx = projection.pastDays + dayIndex
+  return idx >= 0 && idx < projection.pastSeries.length ? projection.pastSeries[idx] : projection.series[0]
+}
+
+function BalanceInlineDrawer({
+  projection,
+  primaryAsOf,
+  onCommit,
+  onCancel,
+}: {
+  projection: import('../lib/projection').Projection
+  primaryAsOf: string
+  onCommit: (balance: number, asOf: string) => Promise<void>
+  onCancel: () => void
+}) {
+  const primaryDate = Temporal.PlainDate.from(primaryAsOf)
+  const calToday = Temporal.Now.plainDateISO()
+  // Correction date must be strictly before primaryDate to create a seam, not overwrite it.
+  const maxOffset = primaryDate.until(calToday).total({ unit: 'day' }) - 1 // at most yesterday relative to primary
+  const clampedInitial = Math.min(-1, maxOffset >= 0 ? -1 : maxOffset)
+
+  const calYesterday = calToday.subtract({ days: 1 })
+  const [selDayOffset, setSelDayOffset] = useState(clampedInitial)
+  const selDate = calToday.add({ days: selDayOffset })
+  const projected = correctedProjectedAt(projection, primaryDate, selDate)
+  const [amount, setAmount] = useState(() => projected.toFixed(2))
+  const [touched, setTouched] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const dateInputRef = useRef<HTMLInputElement>(null)
+
+  const asserted = Number(amount.replace(/[^0-9.\-]/g, ''))
+  const drift = Number.isFinite(asserted) ? asserted - projected : 0
+  const driftPositive = drift >= 0
+
+  function applyDate(d: Temporal.PlainDate) {
+    const offset = Math.min(-1, Math.round(calToday.until(d).total({ unit: 'day' })))
+    setSelDayOffset(offset)
+    const clamped = calToday.add({ days: offset })
+    if (!touched) setAmount(correctedProjectedAt(projection, primaryDate, clamped).toFixed(2))
+  }
+
+  function selectPreset(offset: number) {
+    setSelDayOffset(offset)
+    const d = calToday.add({ days: offset })
+    if (!touched) setAmount(correctedProjectedAt(projection, primaryDate, d).toFixed(2))
+  }
+
+  async function commit() {
+    if (!Number.isFinite(asserted)) return
+    setSaving(true)
+    try { await onCommit(Math.round(asserted * 100) / 100, selDate.toString()) }
+    finally { setSaving(false) }
+  }
+
+  const DOW3 = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const dateLabel = `${DOW3[selDate.dayOfWeek - 1]} · ${selDate.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+
+  return (
+    <section
+      className="rounded-[14px] border p-5"
+      style={{
+        borderColor: `color-mix(in srgb, var(--cf-accent) 55%, var(--cf-line-2))`,
+        background: 'var(--cf-surface)',
+        boxShadow: `0 4px 16px color-mix(in srgb, var(--cf-accent) 12%, transparent)`,
+      }}
+    >
+      {/* Header: ≠ RECONCILE BALANCE | date chip + presets */}
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2 pt-0.5">
+          <span className="text-accent-ink"><SeamGlyph size={13} /></span>
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-accent-ink">
+            Reconcile Balance
+          </span>
+        </div>
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="relative">
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={selDate.toString()}
+              max={calYesterday.toString()}
+              min={calToday.subtract({ years: 2 }).toString()}
+              tabIndex={-1}
+              onChange={(e) => { if (e.target.value) applyDate(Temporal.PlainDate.from(e.target.value)) }}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+            <button
+              type="button"
+              onClick={() => dateInputRef.current?.showPicker()}
+              className="relative flex items-center gap-1 rounded-chip border px-2.5 py-1 font-mono text-[11px]"
+              style={{
+                borderColor: `color-mix(in srgb, var(--cf-accent) 50%, var(--cf-line-2))`,
+                color: 'var(--cf-accent-ink)',
+                background: 'var(--cf-accent-soft)',
+              }}
+            >
+              {dateLabel}
+              <span className="ml-0.5 opacity-50">▾</span>
+            </button>
+          </div>
+          <div className="flex flex-wrap justify-end gap-1">
+            {CORRECTION_DAY_OFFSETS.map((offset) => (
+              <button
+                key={offset}
+                type="button"
+                onClick={() => selectPreset(offset)}
+                className={`cursor-pointer rounded-chip border px-2 py-0.5 font-mono text-[10px] transition-colors ${
+                  offset === selDayOffset
+                    ? 'border-accent bg-accent-soft text-accent-ink'
+                    : 'border-line-2 text-ink-3 hover:text-ink'
+                }`}
+              >
+                {CORRECTION_PRESET_LABELS[offset]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Large dollar input */}
+      <div
+        className="mb-4 flex items-center gap-1.5 rounded-xl border px-4 py-3 transition-colors focus-within:border-accent"
+        style={{ borderColor: 'var(--cf-line-2)', background: 'var(--cf-surface-2)' }}
+      >
+        <span className="font-mono text-[26px] text-ink-3">$</span>
+        <input
+          autoFocus
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => { setAmount(e.target.value); setTouched(true) }}
+          className="min-w-0 flex-1 bg-transparent font-mono text-[28px] tracking-[-0.02em] text-ink outline-none placeholder:text-ink-4"
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+          onKeyDown={(e) => { if (e.key === 'Enter') void commit(); if (e.key === 'Escape') onCancel() }}
+        />
+      </div>
+
+      {/* Diff panel */}
+      <div
+        className="mb-4 grid items-center gap-2.5 rounded-[10px] border p-4"
+        style={{
+          gridTemplateColumns: '1fr auto 1fr',
+          background: 'var(--cf-accent-soft)',
+          borderColor: `color-mix(in srgb, var(--cf-accent) 50%, var(--cf-line-2))`,
+          borderStyle: 'dashed',
+        }}
+      >
+        <div className="flex flex-col gap-0.5">
+          <p className="micro text-ink-3">Projected here</p>
+          <p className="font-mono text-[15px] text-ink" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            {USD.format(projected)}
+          </p>
+        </div>
+        <span className="text-accent-ink"><SeamGlyph size={16} /></span>
+        <div className="flex flex-col gap-0.5 text-right">
+          <p className="micro text-ink-3">Your actual</p>
+          <p className="font-mono text-[15px] text-ink" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            {Number.isFinite(asserted) ? USD.format(asserted) : '—'}
+          </p>
+        </div>
+        <div className="col-span-full text-center font-mono text-[12px]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {Math.abs(drift) < 0.01
+            ? <span className="text-ink-3">No change — matches projection</span>
+            : <span className={driftPositive ? 'text-in-ink' : 'text-out-ink'}>
+                {driftPositive ? '▲' : '▼'} {USD.format(Math.abs(drift))} correction · re-bases everything after
+              </span>}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-end gap-2">
+        <button
+          type="button" onClick={onCancel}
+          className="cursor-pointer rounded-field border border-line-2 px-4 py-2 text-[13px] text-ink-2 transition-colors hover:text-ink"
+        >Cancel</button>
+        <button
+          type="button" onClick={() => void commit()} disabled={saving || !Number.isFinite(asserted)}
+          className="cursor-pointer rounded-field px-4 py-2 text-[13px] text-accent-on transition-colors hover:opacity-90 disabled:opacity-40"
+          style={{ background: 'var(--cf-accent-ink)', border: '1px solid var(--cf-accent-ink)' }}
+        >{saving ? 'Saving…' : 'Set balance'}</button>
+      </div>
+    </section>
   )
 }

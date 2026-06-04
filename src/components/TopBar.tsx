@@ -23,7 +23,7 @@ export default function TopBar() {
         Skip to main content
       </a>
       <header className="sticky top-0 z-10 h-13 border-b border-line bg-card">
-        <nav className="mx-auto flex h-full max-w-270 items-center gap-6 px-6">
+        <nav className="mx-auto grid h-full max-w-270 grid-cols-[1fr_auto_1fr] items-center px-6">
           <Link
             to="/"
             className="flex items-center gap-2 no-underline text-ink"
@@ -35,27 +35,29 @@ export default function TopBar() {
             <span className="mono text-[12px] uppercase tracking-[0.16em]">
               cashflow
             </span>
-            <span className="rounded-pill border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-accent-ink">
+            <span className="rounded-chip border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-accent-ink">
               beta
             </span>
           </Link>
 
-          {!isOnboarding && <ul className="flex items-center gap-5 text-[13px]">
-            {TABS.map(({ to, label }) => (
-              <li key={to}>
-                <Link
-                  to={to}
-                  activeOptions={{ exact: true }}
-                  className="border-b-2 border-transparent pb-px text-ink-2 no-underline transition-colors hover:text-ink aria-[current=page]:border-accent aria-[current=page]:font-medium aria-[current=page]:text-ink"
-                  activeProps={{ "aria-current": "page" as const }}
-                >
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>}
+          {!isOnboarding && (
+            <ul className="flex items-center gap-0.5">
+              {TABS.map(({ to, label }) => (
+                <li key={to}>
+                  <Link
+                    to={to}
+                    activeOptions={{ exact: true }}
+                    className="block rounded-[6px] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-ink-3 no-underline transition-colors hover:text-ink aria-[current=page]:bg-card-2 aria-[current=page]:text-ink"
+                    activeProps={{ "aria-current": "page" as const }}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
 
-          <div className="ml-auto">
+          <div className="flex justify-end">
             <VaultControl />
           </div>
         </nav>

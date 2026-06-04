@@ -119,7 +119,7 @@ export default function ReconcileDialog({ projection, primaryAsOf, onCommit, onC
                   key={p.days}
                   type="button"
                   onClick={() => selectPreset(p.days)}
-                  className={`rounded-pill border px-2.5 py-1 font-mono text-[11px] transition-colors ${
+                  className={`rounded-chip border px-2.5 py-1 font-mono text-[11px] transition-colors ${
                     p.days === selDays
                       ? 'border-accent bg-accent-soft text-accent-ink'
                       : 'border-line-2 text-ink-2 hover:text-ink'
@@ -128,7 +128,7 @@ export default function ReconcileDialog({ projection, primaryAsOf, onCommit, onC
                   {p.label}
                 </button>
               ))}
-              <span className="rounded-pill border border-line-2 px-2.5 py-1 font-mono text-[11px] text-ink-3">
+              <span className="rounded-chip border border-line-2 px-2.5 py-1 font-mono text-[11px] text-ink-3">
                 {selDate.toString()}
               </span>
             </div>
@@ -139,7 +139,7 @@ export default function ReconcileDialog({ projection, primaryAsOf, onCommit, onC
             <p className="micro mb-2">Actual balance</p>
             <div
               className="flex items-center gap-1 rounded-[12px] border border-line-2 bg-surface-2 px-4 py-3 transition-colors focus-within:border-accent focus-within:bg-surface"
-              style={{ '--tw-shadow': `0 0 0 3px color-mix(in oklch, var(--cf-accent) 18%, transparent)` } as React.CSSProperties}
+              style={{ '--tw-shadow': `0 0 0 3px color-mix(in srgb, var(--cf-accent) 18%, transparent)` } as React.CSSProperties}
             >
               <span className="font-mono text-[26px] text-ink-3">$</span>
               <input
@@ -161,7 +161,7 @@ export default function ReconcileDialog({ projection, primaryAsOf, onCommit, onC
             style={{
               gridTemplateColumns: '1fr auto 1fr',
               background: 'var(--cf-accent-soft)',
-              borderColor: `color-mix(in oklch, var(--cf-accent) 50%, var(--cf-line-2))`,
+              borderColor: `color-mix(in srgb, var(--cf-accent) 50%, var(--cf-line-2))`,
               borderStyle: 'dashed',
             }}
           >
