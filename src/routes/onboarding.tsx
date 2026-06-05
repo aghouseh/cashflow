@@ -148,7 +148,7 @@ function EntryRow({
       <button
         type="button"
         className={`ob-entry-dir ${entry.kind === 'IN' ? 'in' : 'out'}`}
-        title={entry.kind === 'IN' ? 'Money in' : 'Money out'}
+        aria-label={entry.kind === 'IN' ? 'Switch to money out' : 'Switch to money in'}
         onClick={() => onChange({ ...entry, kind: entry.kind === 'IN' ? 'OUT' : 'IN' })}
       >
         {entry.kind === 'IN' ? '↑' : '↓'}
@@ -157,6 +157,7 @@ function EntryRow({
       <input
         className="ob-entry-name"
         type="text"
+        aria-label="Entry name"
         value={entry.name}
         placeholder="Name this entry"
         onChange={e => onChange({ ...entry, name: e.target.value })}
@@ -174,7 +175,8 @@ function EntryRow({
           onChange={e => {
             const raw = e.target.value.replace(/[^0-9.]/g, '')
             setAmtDraft(raw)
-            onChange({ ...entry, amount: raw === '' ? 0 : Number(raw) })
+            const parsed = parseFloat(raw)
+            onChange({ ...entry, amount: raw === '' || !isFinite(parsed) ? 0 : parsed })
           }}
         />
       </div>
@@ -195,7 +197,7 @@ function EntryRow({
       <button
         type="button"
         className="ob-entry-del"
-        title="Remove"
+        aria-label={`Remove ${entry.name || 'entry'}`}
         onClick={onRemove}
       >
         ×
@@ -218,18 +220,19 @@ function MoneyInput({
 
   return (
     <div className={`ob-field big${focus ? ' focus-within' : ''}`}>
-      <span className="pfx">$</span>
+      <span className="pfx">{!focus && value < 0 ? '−$' : '$'}</span>
       <input
         autoFocus={autoFocus}
         inputMode="decimal"
-        value={focus ? draft : (value ? value.toLocaleString('en-US') : '')}
+        value={focus ? draft : (value ? Math.abs(value).toLocaleString('en-US') : '')}
         placeholder="0"
         onFocus={() => { setFocus(true); setDraft(value ? String(value) : '') }}
         onBlur={() => setFocus(false)}
         onChange={e => {
-          const raw = e.target.value.replace(/[^0-9.]/g, '')
+          const raw = e.target.value.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '')
           setDraft(raw)
-          onChange(raw === '' ? 0 : Number(raw))
+          const parsed = parseFloat(raw)
+          onChange(raw === '' || !isFinite(parsed) ? 0 : parsed)
         }}
       />
     </div>
@@ -694,6 +697,7 @@ function OnboardingPage() {
   const [asOf, setAsOf] = useState(todayIso)
   const [entries, setEntries] = useState<ObDraftEntry[]>([])
   const [busy, setBusy] = useState(false)
+  const finishingRef = useRef(false)
   const startedRef = useRef(false)
 
   if (!ready) {
@@ -717,7 +721,8 @@ function OnboardingPage() {
   }
 
   async function finish() {
-    if (busy) return
+    if (finishingRef.current) return
+    finishingRef.current = true
     setBusy(true)
     try {
       await writeSnapshot({
@@ -738,8 +743,10 @@ function OnboardingPage() {
       }
       track('onboarding_complete')
       setStep(4)
-    } catch {
+    } catch (err) {
+      track('onboarding_finish_error', { error: String(err) })
       setBusy(false)
+      finishingRef.current = false
     }
   }
 

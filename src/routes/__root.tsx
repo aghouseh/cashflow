@@ -38,7 +38,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <>
       <TopBar />
       {isOnboarding ? (
-        <div id="main-content">{children}</div>
+        <main id="main-content">{children}</main>
       ) : (
         <main id="main-content" className="mx-auto max-w-270 px-6 py-6">
           {children}

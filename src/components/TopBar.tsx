@@ -44,7 +44,7 @@ export default function TopBar() {
           </Link>
 
           {!isOnboarding && (
-            <ul className="absolute inset-x-0 flex items-center justify-center gap-0.5">
+            <ul className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
               {TABS.map(({ to, label }) => (
                 <li key={to}>
                   <Link

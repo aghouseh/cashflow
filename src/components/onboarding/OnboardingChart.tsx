@@ -119,7 +119,7 @@ export default function OnboardingChart({
     const d = smoothPath(coords)
     const first = coords[0]
     const last = coords[coords.length - 1]
-    const area = `${d} L ${last[0].toFixed(1)} ${h - padX} L ${first[0].toFixed(1)} ${h - padX} Z`
+    const area = `${d} L ${last[0].toFixed(1)} ${h - padY} L ${first[0].toFixed(1)} ${h - padY} Z`
     return { minV, maxV, coords, d, area }
   }, [sampled, w, h, padX, padY])
 

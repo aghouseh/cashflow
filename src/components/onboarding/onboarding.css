@@ -169,7 +169,7 @@
   color: var(--cf-accent-on);
 }
 .ob-btn.accent:hover {
-  background: color-mix(in srgb, var(--cf-accent) 88%, #000);
+  background: color-mix(in srgb, var(--cf-accent) 88%, black);
 }
 
 /* ── welcome screen ──────────────────────────────────────────────────────── */
