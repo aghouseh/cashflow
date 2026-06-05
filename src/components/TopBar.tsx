@@ -23,7 +23,10 @@ export default function TopBar() {
         Skip to main content
       </a>
       <header className="sticky top-0 z-10 h-13 border-b border-line bg-card">
-        <nav className="mx-auto grid h-full max-w-270 grid-cols-[1fr_auto_1fr] items-center px-6">
+        {/* Flex layout: brand left, tabs absolutely centered, right slot ml-auto.
+            Using absolute-center for tabs keeps the right slot truly right-aligned
+            regardless of whether the center nav is present or hidden. */}
+        <nav className="relative mx-auto flex h-full max-w-270 items-center px-6">
           <Link
             to="/"
             className="flex items-center gap-2 no-underline text-ink"
@@ -41,7 +44,7 @@ export default function TopBar() {
           </Link>
 
           {!isOnboarding && (
-            <ul className="flex items-center gap-0.5">
+            <ul className="absolute inset-x-0 flex items-center justify-center gap-0.5">
               {TABS.map(({ to, label }) => (
                 <li key={to}>
                   <Link
@@ -57,7 +60,7 @@ export default function TopBar() {
             </ul>
           )}
 
-          <div className="flex justify-end">
+          <div className="ml-auto">
             {isOnboarding ? (
               <span className="flex items-center gap-1.5 rounded-chip border border-line bg-card-2 px-2.5 py-1 font-mono text-[11px] tracking-[0.02em] text-ink-2">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12" style={{ opacity: 0.75 }}>
