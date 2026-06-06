@@ -155,19 +155,8 @@
   background: var(--cf-ink);
   color: var(--cf-bg);
 }
-.ob-btn.primary:hover { background: #000; }
+.ob-btn.primary:hover { background: color-mix(in srgb, var(--cf-ink) 88%, black); }
 
-.ob-btn.ghost {
-  background: transparent;
-  color: var(--cf-ink-2);
-  border-color: var(--cf-line-2);
-}
-.ob-btn.ghost:hover { border-color: var(--cf-ink-3); color: var(--cf-ink); }
-
-.ob-btn.accent {
-  background: var(--cf-accent);
-  color: var(--cf-accent-on);
-}
 .ob-btn.accent:hover {
   background: color-mix(in srgb, var(--cf-accent) 88%, black);
 }

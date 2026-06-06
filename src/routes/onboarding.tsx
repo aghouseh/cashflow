@@ -160,6 +160,7 @@ function EntryRow({
         aria-label="Entry name"
         value={entry.name}
         placeholder="Name this entry"
+        aria-label="Entry name"
         onChange={e => onChange({ ...entry, name: e.target.value })}
       />
 
