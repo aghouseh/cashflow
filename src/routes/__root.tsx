@@ -1,4 +1,4 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { useEffect, useState } from 'react'
@@ -32,12 +32,18 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     if (vaultMode === 'locked') setShowLock(true)
   }, [vaultMode])
 
+  const isOnboarding = useRouterState({ select: s => s.location.pathname === '/onboarding' })
+
   const appShell = (
     <>
       <TopBar />
-      <main id="main-content" className="mx-auto max-w-270 px-6 py-6">
-        {children}
-      </main>
+      {isOnboarding ? (
+        <main id="main-content">{children}</main>
+      ) : (
+        <main id="main-content" className="mx-auto max-w-270 px-6 py-6">
+          {children}
+        </main>
+      )}
     </>
   )
 
@@ -54,7 +60,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             ui_host: import.meta.env.VITE_POSTHOG_HOST || 'https://us.posthog.com',
             defaults: '2025-05-24',
             capture_exceptions: true,
-            debug: import.meta.env.DEV,
+            debug: import.meta.env.VITE_POSTHOG_DEBUG === 'true',
           }}
         >
           <Sentry.ErrorBoundary fallback={<AppError />}>

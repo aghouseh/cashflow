@@ -1,67 +1,712 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { Temporal } from '@js-temporal/polyfill'
 import { track } from '../lib/analytics/index.js'
-import { useRef, useState } from 'react'
-import { seedDevData } from '../lib/dev/seed'
 import { useDbReady } from '../lib/db/ready'
 import { writeSnapshot } from '../lib/data/snapshot'
-import { createEntry, updateEntry } from '../lib/data/entry'
-import { CADENCES, type CadenceKey, findCadence } from '../lib/cadence'
-
+import { createEntry } from '../lib/data/entry'
+import { newId } from '../lib/id'
 import { redirectIfSnapshotted } from '../lib/route-guards'
+import { projectOne } from '../lib/projection'
+import type { Entry } from '../lib/db/schema'
+import OnboardingChart, { type ObDraftEntry, fmtMoneyOb } from '../components/onboarding/OnboardingChart'
+import '../components/onboarding/onboarding.css'
 
 export const Route = createFileRoute('/onboarding')({
   beforeLoad: redirectIfSnapshotted,
   component: OnboardingPage,
 })
 
-type Step = 'snapshot' | 'income' | 'expense'
+// ── types ──────────────────────────────────────────────────────────────────
 
-type SnapshotDraft = {
-  balance: string
-  asOf: string
+type ObCadenceKey = ObDraftEntry['cadenceKey']
+
+type ObStep = 0 | 1 | 2 | 3 | 4  // welcome | balance | recurring | review | done
+
+// ── constants ──────────────────────────────────────────────────────────────
+
+const OB_CADENCES: Array<{ key: ObCadenceKey; label: string }> = [
+  { key: 'monthly',   label: 'Monthly' },
+  { key: 'bi-weekly', label: '2 weeks' },
+  { key: 'weekly',    label: 'Weekly'  },
+]
+
+const OB_RRULE: Record<ObCadenceKey, string> = {
+  monthly:    'FREQ=MONTHLY',
+  'bi-weekly':'FREQ=WEEKLY;INTERVAL=2',
+  weekly:     'FREQ=WEEKLY',
+}
+
+const OB_MONTHLY_FACTOR: Record<ObCadenceKey, number> = {
+  monthly:    1,
+  'bi-weekly':26 / 12,
+  weekly:     52 / 12,
+}
+
+const SUGGEST_IN: Array<Omit<ObDraftEntry, 'id'>> = [
+  { kind: 'IN',  name: 'Paycheck',   amount: 1900, cadenceKey: 'bi-weekly' },
+  { kind: 'IN',  name: 'Side income',amount: 600,  cadenceKey: 'monthly'  },
+]
+
+const SUGGEST_OUT: Array<Omit<ObDraftEntry, 'id'>> = [
+  { kind: 'OUT', name: 'Rent / Mortgage', amount: 1650, cadenceKey: 'monthly' },
+  { kind: 'OUT', name: 'Groceries',       amount: 460,  cadenceKey: 'monthly' },
+  { kind: 'OUT', name: 'Utilities',       amount: 180,  cadenceKey: 'monthly' },
+  { kind: 'OUT', name: 'Subscriptions',   amount: 58,   cadenceKey: 'monthly' },
+  { kind: 'OUT', name: 'Car / Transit',   amount: 240,  cadenceKey: 'monthly' },
+  { kind: 'OUT', name: 'Insurance',       amount: 160,  cadenceKey: 'monthly' },
+]
+
+const SAMPLE_BALANCE = 4820
+const SAMPLE_ENTRIES: ObDraftEntry[] = [
+  { id: 's1', kind: 'IN',  name: 'Paycheck',        amount: 1900, cadenceKey: 'bi-weekly' },
+  { id: 's2', kind: 'OUT', name: 'Rent / Mortgage',  amount: 1650, cadenceKey: 'monthly'  },
+  { id: 's3', kind: 'OUT', name: 'Groceries',        amount: 460,  cadenceKey: 'monthly'  },
+  { id: 's4', kind: 'OUT', name: 'Utilities',        amount: 180,  cadenceKey: 'monthly'  },
+  { id: 's5', kind: 'OUT', name: 'Subscriptions',    amount: 58,   cadenceKey: 'monthly'  },
+]
+
+// ── small hooks ────────────────────────────────────────────────────────────
+
+function useInView(): [React.RefObject<HTMLDivElement | null>, number] {
+  const ref = useRef<HTMLDivElement>(null)
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    const kick = setTimeout(() => setN(x => x || 1), 120)
+    const el = ref.current
+    if (!el) return () => clearTimeout(kick)
+    const io = new IntersectionObserver(ents => {
+      ents.forEach(e => { if (e.isIntersecting) setN(x => x + 1) })
+    }, { threshold: 0.2 })
+    io.observe(el)
+    return () => { clearTimeout(kick); io.disconnect() }
+  }, [])
+  return [ref, n]
+}
+
+function useCountUp(target: number, run: number, dur = 1100, delay = 250): number {
+  const [v, setV] = useState(0)
+  useEffect(() => {
+    if (!run) return
+    let raf: number, done = false
+    let t0: number | null = null
+    const ease = (x: number) => 1 - Math.pow(1 - x, 3)
+    const tick = (t: number) => {
+      if (t0 === null) t0 = t
+      const e = Math.min(1, (t - t0 - delay) / dur)
+      setV(e <= 0 ? 0 : ease(e) * target)
+      if (e < 1) raf = requestAnimationFrame(tick); else done = true
+    }
+    raf = requestAnimationFrame(tick)
+    const fb = setTimeout(() => { if (!done) setV(target) }, delay + dur + 400)
+    return () => { cancelAnimationFrame(raf); clearTimeout(fb) }
+  }, [run, target, dur, delay])
+  return v
+}
+
+// ── helpers ────────────────────────────────────────────────────────────────
+
+function monthlyNet(entries: ObDraftEntry[]): number {
+  return entries.reduce((sum, e) => {
+    return sum + (e.kind === 'IN' ? 1 : -1) * e.amount * OB_MONTHLY_FACTOR[e.cadenceKey]
+  }, 0)
+}
+
+function todayIso(): string {
+  return Temporal.Now.plainDateISO().toString()
+}
+
+// ── Steps progress indicator ───────────────────────────────────────────────
+
+function StepProgress({ total, current }: { total: number; current: number }) {
+  return (
+    <div className="ob-steps" aria-label={`Step ${current + 1} of ${total}`}>
+      {Array.from({ length: total }).map((_, i) => (
+        <span
+          key={i}
+          className={`seg ${i < current ? 'past' : i === current ? 'cur' : ''}`}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ── entry row ─────────────────────────────────────────────────────────────
+
+function EntryRow({
+  entry, onChange, onRemove,
+}: {
+  entry: ObDraftEntry
+  onChange: (next: ObDraftEntry) => void
+  onRemove: () => void
+}) {
+  const [amtFocus, setAmtFocus] = useState(false)
+  const [amtDraft, setAmtDraft] = useState('')
+
+  return (
+    <div className="ob-entry-row">
+      <button
+        type="button"
+        className={`ob-entry-dir ${entry.kind === 'IN' ? 'in' : 'out'}`}
+        aria-label={entry.kind === 'IN' ? 'Switch to money out' : 'Switch to money in'}
+        onClick={() => onChange({ ...entry, kind: entry.kind === 'IN' ? 'OUT' : 'IN' })}
+      >
+        {entry.kind === 'IN' ? '↑' : '↓'}
+      </button>
+
+      <input
+        className="ob-entry-name"
+        type="text"
+        aria-label="Entry name"
+        value={entry.name}
+        placeholder="Name this entry"
+        aria-label="Entry name"
+        onChange={e => onChange({ ...entry, name: e.target.value })}
+      />
+
+      <div className={`ob-entry-amt${amtFocus ? ' focus' : ''}`}>
+        <span className="pfx">$</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={amtFocus ? amtDraft : (entry.amount ? entry.amount.toLocaleString('en-US') : '')}
+          placeholder="0"
+          onFocus={() => { setAmtFocus(true); setAmtDraft(entry.amount ? String(entry.amount) : '') }}
+          onBlur={() => setAmtFocus(false)}
+          onChange={e => {
+            const raw = e.target.value.replace(/[^0-9.]/g, '')
+            setAmtDraft(raw)
+            const parsed = parseFloat(raw)
+            onChange({ ...entry, amount: raw === '' || !isFinite(parsed) ? 0 : parsed })
+          }}
+        />
+      </div>
+
+      <div className="ob-entry-cad">
+        {OB_CADENCES.map(c => (
+          <button
+            key={c.key}
+            type="button"
+            className={entry.cadenceKey === c.key ? 'on' : ''}
+            onClick={() => onChange({ ...entry, cadenceKey: c.key })}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className="ob-entry-del"
+        aria-label={`Remove ${entry.name || 'entry'}`}
+        onClick={onRemove}
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
+// ── big money input ────────────────────────────────────────────────────────
+
+function MoneyInput({
+  value, onChange, autoFocus,
+}: {
+  value: number
+  onChange: (v: number) => void
+  autoFocus?: boolean
+}) {
+  const [focus, setFocus] = useState(false)
+  const [draft, setDraft] = useState('')
+
+  return (
+    <div className={`ob-field big${focus ? ' focus-within' : ''}`}>
+      <span className="pfx">{!focus && value < 0 ? '−$' : '$'}</span>
+      <input
+        autoFocus={autoFocus}
+        inputMode="decimal"
+        value={focus ? draft : (value ? Math.abs(value).toLocaleString('en-US') : '')}
+        placeholder="0"
+        onFocus={() => { setFocus(true); setDraft(value ? String(value) : '') }}
+        onBlur={() => setFocus(false)}
+        onChange={e => {
+          const raw = e.target.value.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '')
+          setDraft(raw)
+          const parsed = parseFloat(raw)
+          onChange(raw === '' || !isFinite(parsed) ? 0 : parsed)
+        }}
+      />
+    </div>
+  )
+}
+
+// ── screen: welcome ────────────────────────────────────────────────────────
+
+function ScreenWelcome({
+  onSetup, onSample,
+}: {
+  onSetup: () => void
+  onSample: () => void
+}) {
+  const [ref, run] = useInView()
+  const sampleEnd = useMemo(() => {
+    const proj = projectOne(
+      { id: 'ob-preview', balance: SAMPLE_BALANCE, asOf: todayIso() },
+      SAMPLE_ENTRIES.filter(e => e.amount > 0).map(e => ({
+        id: e.id, kind: e.kind, name: e.name, amount: e.amount,
+        currency: 'USD', startDate: todayIso(), endDate: null,
+        rrule: OB_RRULE[e.cadenceKey], paused: false,
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      } satisfies Entry)),
+      182,
+    )
+    return proj.series[proj.series.length - 1]
+  }, [])
+  const countedEnd = useCountUp(sampleEnd, run, 1300, 950)
+
+  return (
+    <div className="ob-welcome" ref={ref}>
+      <div className="ob-welcome-text">
+        <span className="ob-eyebrow">A clearer view of what's ahead</span>
+        <h1 className="ob-hero">
+          <span className="lead">See what's</span><br />coming.
+        </h1>
+        <p className="ob-lede">
+          Cashflow takes today's balance and the paychecks and bills you already know about,
+          then quietly draws your money{' '}
+          <em style={{ fontStyle: 'normal', color: 'var(--cf-ink)' }}>forward</em>{' '}
+          — so next month stops being a surprise.
+        </p>
+      </div>
+
+      <div className="ob-proj-card">
+        <div className="ob-proj-card-head">
+          <span className="ob-eyebrow">A projection, roughly</span>
+          <span className="ob-proj-end-val">{fmtMoneyOb(countedEnd)}</span>
+        </div>
+        <OnboardingChart
+          w={592} h={150}
+          startBalance={SAMPLE_BALANCE}
+          entries={SAMPLE_ENTRIES}
+          run={run}
+          endLabel="~6 MONTHS"
+        />
+      </div>
+
+      <div className="ob-welcome-ctas">
+        <div className="ob-welcome-btns">
+          <button
+            type="button"
+            className="ob-btn primary"
+            style={{ minWidth: 200 }}
+            onClick={onSetup}
+          >
+            Set up my balance →
+          </button>
+          <button type="button" className="ob-btn ghost" onClick={onSample}>
+            Load sample data instead
+          </button>
+        </div>
+        <div className="ob-chips">
+          <span className="ob-chip"><span className="ob-dot" />About a minute</span>
+          <span className="ob-chip"><span className="ob-dot" />Stays on your device</span>
+          <span className="ob-chip"><span className="ob-dot" />Change anything later</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── screen: balance ────────────────────────────────────────────────────────
+
+function ScreenBalance({
+  balance, setBalance, label, setLabel, asOf, setAsOf, onBack, onNext,
+}: {
+  balance: number
+  setBalance: (v: number) => void
   label: string
+  setLabel: (v: string) => void
+  asOf: string
+  setAsOf: (v: string) => void
+  onBack: () => void
+  onNext: () => void
+}) {
+  return (
+    <div className="ob-step-screen">
+      <div className="ob-step-body">
+        <div className="ob-step-pad">
+          <div className="ob-step-head">
+            <span className="ob-eyebrow">Cashflow setup · 1 of 3</span>
+            <StepProgress total={3} current={0} />
+          </div>
+          <div style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <h2 className="ob-h2">Where are you starting from?</h2>
+              <p className="ob-lede" style={{ fontSize: 13.5 }}>
+                Everything Cashflow draws is built forward from this one number.
+                A ballpark is fine — you can change it whenever.
+              </p>
+            </div>
+
+            <div>
+              <span className="ob-field-label">Current balance</span>
+              <MoneyInput value={balance} onChange={setBalance} autoFocus />
+              <p className="ob-help">In dollars. Negatives are fine if you're underwater.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div>
+                <span className="ob-field-label">As of</span>
+                <div className="ob-field">
+                  <input
+                    type="date"
+                    className="ob-field-text"
+                    value={asOf}
+                    onChange={e => setAsOf(e.target.value)}
+                    data-1p-ignore
+                    data-lpignore="true"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <div>
+                <span className="ob-field-label">
+                  Account label{' '}
+                  <span className="ob-optional">— optional</span>
+                </span>
+                <div className="ob-field">
+                  <input
+                    type="text"
+                    className="ob-field-text"
+                    value={label}
+                    placeholder="Checking"
+                    onChange={e => setLabel(e.target.value)}
+                    data-1p-ignore
+                    data-lpignore="true"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="ob-step-foot">
+        <button type="button" className="ob-back-btn" onClick={onBack}>← Back</button>
+        <div className="ob-step-foot-right">
+          <button type="button" className="ob-btn primary" onClick={onNext}>
+            Continue →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-type EntryDraft = {
-  name: string
-  amount: string
-  startDate: string
-  cadence: CadenceKey
+// ── screen: recurring ─────────────────────────────────────────────────────
+
+function ScreenRecurring({
+  balance, entries, setEntries, onBack, onNext,
+}: {
+  balance: number
+  entries: ObDraftEntry[]
+  setEntries: React.Dispatch<React.SetStateAction<ObDraftEntry[]>>
+  onBack: () => void
+  onNext: () => void
+}) {
+  const [ref, run] = useInView()
+  const has = entries.length > 0
+  const net = monthlyNet(entries)
+
+  const add = useCallback((template: Omit<ObDraftEntry, 'id'>) => {
+    setEntries(es => [...es, { ...template, id: newId() }])
+  }, [setEntries])
+
+  const update = useCallback((id: string, next: ObDraftEntry) => {
+    setEntries(es => es.map(e => e.id === id ? next : e))
+  }, [setEntries])
+
+  const remove = useCallback((id: string) => {
+    setEntries(es => es.filter(e => e.id !== id))
+  }, [setEntries])
+
+  return (
+    <div className="ob-step-screen">
+      <div className="ob-step-body">
+        <div className="ob-step-pad">
+          <div className="ob-step-head">
+            <span className="ob-eyebrow">Cashflow setup · 2 of 3</span>
+            <StepProgress total={3} current={1} />
+          </div>
+
+          <div ref={ref} className="ob-recurring-grid">
+            {/* left: entries + catalog */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <h2 className="ob-h2">What comes in and goes out?</h2>
+                <p className="ob-lede" style={{ fontSize: 13.5 }}>
+                  The regulars — a paycheck, rent, a couple of bills.
+                  Cashflow repeats each one forward on its own schedule.
+                </p>
+              </div>
+
+              {has && (
+                <div className="ob-entry-list">
+                  {entries.map(e => (
+                    <EntryRow
+                      key={e.id}
+                      entry={e}
+                      onChange={next => update(e.id, next)}
+                      onRemove={() => remove(e.id)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <div className="ob-quick-wrap">
+                <span className="ob-eyebrow">
+                  {has ? 'Add another' : 'Tap to add — edit the details after'}
+                </span>
+                <div className="ob-quick-row">
+                  {SUGGEST_IN.map(s => (
+                    <button
+                      key={s.name} type="button"
+                      className="ob-quick-chip in"
+                      onClick={() => add(s)}
+                    >
+                      <span className="pm">+</span>{s.name}
+                    </button>
+                  ))}
+                  {SUGGEST_OUT.map(s => (
+                    <button
+                      key={s.name} type="button"
+                      className="ob-quick-chip out"
+                      onClick={() => add(s)}
+                    >
+                      <span className="pm">+</span>{s.name}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="ob-quick-chip custom"
+                    onClick={() => add({ kind: 'OUT', name: '', amount: 0, cadenceKey: 'monthly' })}
+                  >
+                    <span className="pm">+</span>Custom
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* right: live preview */}
+            <div className="ob-preview-panel">
+              <div className="ob-preview-head">
+                <span className="ob-eyebrow">Your projection so far</span>
+                <span className="ob-live-label">Live</span>
+              </div>
+              <OnboardingChart
+                w={360} h={158}
+                startBalance={balance}
+                entries={entries}
+                run={run + entries.length}
+                endLabel="~6 MONTHS OUT"
+              />
+              <div className="ob-net-row">
+                <span className="ob-help" style={{ margin: 0, whiteSpace: 'nowrap' }}>
+                  Net per month
+                </span>
+                <span className={`ob-net-val ${net >= 0 ? 'pos' : 'neg'}`}>
+                  {net >= 0 ? '+' : '−'}{fmtMoneyOb(Math.abs(net))}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="ob-step-foot">
+        <button type="button" className="ob-back-btn" onClick={onBack}>← Back</button>
+        <div className="ob-step-foot-right">
+          {!has && (
+            <span className="ob-help" style={{ margin: 0 }}>
+              Add a few, or skip — you can add these any time.
+            </span>
+          )}
+          <button type="button" className="ob-btn primary" onClick={onNext}>
+            {has ? 'Continue →' : 'Skip for now →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
+// ── screen: review ─────────────────────────────────────────────────────────
 
-const DEFAULT_BALANCE = '0.00'
-const DEFAULT_LABEL = 'Checking'
-const DEFAULT_AMOUNT = '0.00'
-const DEFAULT_INCOME_NAME = 'Paycheck'
-const DEFAULT_EXPENSE_NAME = 'Rent'
+function ScreenReview({
+  balance, entries, onBack, onFinish,
+}: {
+  balance: number
+  entries: ObDraftEntry[]
+  onBack: () => void
+  onFinish: () => void
+}) {
+  const [ref, run] = useInView()
+  const net = monthlyNet(entries)
 
-const emptyEntryDraft = (defaultName: string): EntryDraft => ({
-  name: defaultName,
-  amount: DEFAULT_AMOUNT,
-  startDate: today(),
-  cadence: 'monthly',
-})
+  const projected = useMemo(() => {
+    const today = todayIso()
+    const fakeEntries: Entry[] = entries.filter(e => e.amount > 0).map(e => ({
+      id: e.id, kind: e.kind, name: e.name, amount: e.amount,
+      currency: 'USD', startDate: today, endDate: null,
+      rrule: OB_RRULE[e.cadenceKey], paused: false,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    }))
+    const proj = projectOne({ id: 'ob-preview', balance: balance || 0, asOf: today }, fakeEntries, 182)
+    return proj.series[proj.series.length - 1]
+  }, [balance, entries])
+
+  return (
+    <div className="ob-step-screen">
+      <div className="ob-step-body">
+        <div className="ob-step-pad">
+          <div className="ob-step-head">
+            <span className="ob-eyebrow">Cashflow setup · 3 of 3</span>
+            <StepProgress total={3} current={2} />
+          </div>
+
+          <div ref={ref} style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 720, margin: '0 auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <h2 className="ob-h2" style={{ fontSize: 27 }}>Here's your next six months.</h2>
+              <p className="ob-lede" style={{ fontSize: 13.5 }}>
+                Built from your balance and{' '}
+                {entries.length > 0
+                  ? `${entries.length} recurring ${entries.length === 1 ? 'entry' : 'entries'}`
+                  : 'your starting balance'}.{' '}
+                Scrub, adjust, and reconcile any time inside the app.
+              </p>
+            </div>
+
+            <div style={{ background: 'var(--cf-surface)', border: '1px solid var(--cf-line)', borderRadius: 'var(--cf-radius-card)', padding: '18px 22px 10px' }}>
+              <OnboardingChart
+                w={672} h={220}
+                startBalance={balance}
+                entries={entries}
+                run={run}
+                endLabel="6 MONTHS OUT"
+              />
+            </div>
+
+            <div className="ob-sum-grid">
+              <div className="ob-sum-cell">
+                <span className="k">Starting balance</span>
+                <span className="v">{fmtMoneyOb(balance)}</span>
+              </div>
+              <div className="ob-sum-cell">
+                <span className="k">Net per month</span>
+                <span className={`v ${net >= 0 ? 'pos' : 'neg'}`}>
+                  {net >= 0 ? '+' : '−'}{fmtMoneyOb(Math.abs(net))}
+                </span>
+              </div>
+              <div className="ob-sum-cell">
+                <span className="k">Projected · 6 mo</span>
+                <span className="v">{fmtMoneyOb(projected)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="ob-step-foot">
+        <button type="button" className="ob-back-btn" onClick={onBack}>← Edit entries</button>
+        <div className="ob-step-foot-right">
+          <button type="button" className="ob-btn accent" onClick={onFinish}>
+            Open Cashflow →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── screen: done ───────────────────────────────────────────────────────────
+
+function ScreenDone({
+  balance, entries, onEnter,
+}: {
+  balance: number
+  entries: ObDraftEntry[]
+  onEnter: () => void
+}) {
+  const [ref, run] = useInView()
+
+  const projected = useMemo(() => {
+    const today = todayIso()
+    const fakeEntries: Entry[] = entries.filter(e => e.amount > 0).map(e => ({
+      id: e.id, kind: e.kind, name: e.name, amount: e.amount,
+      currency: 'USD', startDate: today, endDate: null,
+      rrule: OB_RRULE[e.cadenceKey], paused: false,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    }))
+    const proj = projectOne({ id: 'ob-preview', balance: balance || 0, asOf: today }, fakeEntries, 182)
+    return proj.series[proj.series.length - 1]
+  }, [balance, entries])
+
+  const counted = useCountUp(projected, run, 1100, 500)
+
+  return (
+    <div className="ob-done" ref={ref}>
+      <div className="ob-done-check" aria-hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 420 }}>
+        <h2 className="ob-h2" style={{ fontSize: 28 }}>You're all set.</h2>
+        <p className="ob-lede">
+          Your timeline is drawn through{' '}
+          <strong style={{ color: 'var(--cf-ink)', fontWeight: 500 }}>
+            {new Temporal.PlainDate(
+              Temporal.Now.plainDateISO().year,
+              Temporal.Now.plainDateISO().month,
+              Temporal.Now.plainDateISO().day,
+            ).add({ days: 182 }).toLocaleString('en-US', { month: 'long' })}
+          </strong>.
+          Projected balance six months out:
+        </p>
+        <div className="ob-done-amount">{fmtMoneyOb(counted)}</div>
+      </div>
+      <button type="button" className="ob-btn primary" style={{ minWidth: 220 }} onClick={onEnter}>
+        Go to my dashboard →
+      </button>
+      <p className="ob-help" style={{ margin: 0 }}>
+        Everything stays editable — add accounts, reconcile, or tweak entries whenever.
+      </p>
+    </div>
+  )
+}
+
+// ── page root ──────────────────────────────────────────────────────────────
 
 function OnboardingPage() {
   const ready = useDbReady()
   const navigate = useNavigate()
-  const [step, setStep] = useState<Step>('snapshot')
 
-  const [snapshotDraft, setSnapshotDraft] = useState<SnapshotDraft>({
-    balance: DEFAULT_BALANCE,
-    asOf: today(),
-    label: DEFAULT_LABEL,
-  })
-  const [incomeDraft, setIncomeDraft] = useState<EntryDraft>(emptyEntryDraft(DEFAULT_INCOME_NAME))
-  const [expenseDraft, setExpenseDraft] = useState<EntryDraft>(emptyEntryDraft(DEFAULT_EXPENSE_NAME))
-  const [incomeId, setIncomeId] = useState<string | null>(null)
-  const [expenseId, setExpenseId] = useState<string | null>(null)
+  const [step, setStep] = useState<ObStep>(0)
+  const [balance, setBalance] = useState(0)
+  const [label, setLabel] = useState('')
+  const [asOf, setAsOf] = useState(todayIso)
+  const [entries, setEntries] = useState<ObDraftEntry[]>([])
+  const [busy, setBusy] = useState(false)
+  const finishingRef = useRef(false)
   const startedRef = useRef(false)
 
   if (!ready) {
-    return <p className="micro mt-12 text-center">Initializing…</p>
+    return (
+      <div className="ob-page" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <p className="ob-eyebrow">Initializing…</p>
+      </div>
+    )
   }
 
   if (!startedRef.current) {
@@ -69,418 +714,85 @@ function OnboardingPage() {
     track('onboarding_started')
   }
 
-  function next() {
-    if (step === 'snapshot') setStep('income')
-    else if (step === 'income') setStep('expense')
-    else {
-      track('onboarding_complete')
-      navigate({ to: '/' })
-    }
+  const loadSample = () => {
+    setBalance(SAMPLE_BALANCE)
+    setEntries(SAMPLE_ENTRIES.map(e => ({ ...e, id: newId() })))
+    track('onboarding_sample_loaded')
+    setStep(3)
   }
 
-  function back() {
-    if (step === 'expense') setStep('income')
-    else if (step === 'income') setStep('snapshot')
-  }
-
-  return (
-    <div className="mx-auto mt-8 flex max-w-130 flex-col gap-4">
-      {import.meta.env.DEV && <DevSeedBanner onSeed={() => navigate({ to: '/' })} />}
-      <StepPip step={step} />
-      {step === 'snapshot' && (
-        <SnapshotStep
-          draft={snapshotDraft}
-          onDraftChange={setSnapshotDraft}
-          onDone={next}
-        />
-      )}
-      {step === 'income' && (
-        <EntryStep
-          kind="IN"
-          draft={incomeDraft}
-          onDraftChange={setIncomeDraft}
-          entryId={incomeId}
-          onEntryIdChange={setIncomeId}
-          onDone={next}
-          onSkip={next}
-          onBack={back}
-        />
-      )}
-      {step === 'expense' && (
-        <EntryStep
-          kind="OUT"
-          draft={expenseDraft}
-          onDraftChange={setExpenseDraft}
-          entryId={expenseId}
-          onEntryIdChange={setExpenseId}
-          onDone={next}
-          onSkip={next}
-          onBack={back}
-        />
-      )}
-    </div>
-  )
-}
-
-const STEPS: ReadonlyArray<{ key: Step; label: string }> = [
-  { key: 'snapshot', label: 'Balance' },
-  { key: 'income', label: 'Income' },
-  { key: 'expense', label: 'Expenses' },
-]
-
-function StepPip({ step }: { step: Step }) {
-  const activeIdx = STEPS.findIndex((s) => s.key === step)
-  return (
-    <div className="flex items-center justify-between">
-      <p className="micro">Cashflow setup · {activeIdx + 1} of 3</p>
-      <ol className="flex items-center gap-1.5" aria-label="Setup progress">
-        {STEPS.map((s, i) => (
-          <li
-            key={s.key}
-            aria-current={i === activeIdx ? 'step' : undefined}
-            className={`h-1.5 w-6 rounded-full ${
-              i <= activeIdx ? 'bg-ink' : 'bg-line-2'
-            }`}
-          />
-        ))}
-      </ol>
-    </div>
-  )
-}
-
-function SnapshotStep({
-  draft,
-  onDraftChange,
-  onDone,
-}: {
-  draft: SnapshotDraft
-  onDraftChange: (next: SnapshotDraft) => void
-  onDone: () => void
-}) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const amount = Number(draft.balance)
-  const canSubmit = !Number.isNaN(amount) && draft.balance.trim() !== '' && !busy
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!canSubmit) return
+  async function finish() {
+    if (finishingRef.current) return
+    finishingRef.current = true
     setBusy(true)
-    setError(null)
     try {
       await writeSnapshot({
-        balance: amount,
-        asOf: draft.asOf,
-        accountLabel: draft.label.trim() || null,
+        balance,
+        asOf,
+        accountLabel: label.trim() || null,
       })
-      onDone()
+      const today = todayIso()
+      for (const e of entries) {
+        if (e.amount <= 0) continue
+        await createEntry({
+          kind: e.kind,
+          name: e.name.trim() || (e.kind === 'IN' ? 'Income' : 'Expense'),
+          amount: e.amount,
+          startDate: today,
+          rrule: OB_RRULE[e.cadenceKey],
+        })
+      }
+      track('onboarding_complete')
+      setStep(4)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save balance')
+      track('onboarding_finish_error', { error: String(err) })
       setBusy(false)
+      finishingRef.current = false
     }
   }
 
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="card flex flex-col gap-4"
-      autoComplete="off"
-    >
-      <header>
-        <h1 className="text-[20px] font-medium tracking-tight">
-          What's in the account today?
-        </h1>
-        <p className="mt-1 text-[12px] text-ink-2">
-          Cashflow projects forward from this single number. You can change it any time.
-        </p>
-      </header>
-
-      <Field label="Current balance" hint="In dollars. Negatives are fine if you're underwater." id="ob-balance">
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 mono text-ink-3">$</span>
-          <input
-            // `type="text"` + `inputMode="decimal"` is the standard money-input
-            // pattern: numeric keyboard on mobile, no native spinner buttons,
-            // no locale-dependent stepping behavior of `type="number"`.
-            id="ob-balance"
-            type="text"
-            inputMode="decimal"
-            name="cashflow-snapshot-balance"
-            autoComplete="off"
-            data-1p-ignore
-            data-lpignore="true"
-            value={draft.balance}
-            onChange={(e) => onDraftChange({ ...draft, balance: e.target.value })}
-            onFocus={(e) => { if (e.target.value === DEFAULT_BALANCE) e.target.select() }}
-            placeholder="0.00"
-            className="input pl-7 text-right tabular-nums"
-            autoFocus
-          />
-        </div>
-      </Field>
-
-      <Field label="As of" id="ob-asof">
-        <input
-          id="ob-asof"
-          type="date"
-          name="cashflow-snapshot-as-of"
-          autoComplete="off"
-          data-1p-ignore
-          data-lpignore="true"
-          value={draft.asOf}
-          onChange={(e) => onDraftChange({ ...draft, asOf: e.target.value })}
-          className="input"
-        />
-      </Field>
-
-      <Field label="Account label" hint="Optional. Helpful if you'll add other accounts later." id="ob-label">
-        <input
-          id="ob-label"
-          type="text"
-          name="cashflow-snapshot-account-label"
-          autoComplete="off"
-          data-1p-ignore
-          data-lpignore="true"
-          value={draft.label}
-          onChange={(e) => onDraftChange({ ...draft, label: e.target.value })}
-          onFocus={(e) => { if (e.target.value === DEFAULT_LABEL) e.target.select() }}
-          placeholder="e.g. Chase · 4820"
-          className="input"
-        />
-      </Field>
-
-      {error && <p role="alert" className="text-[12px] text-out-ink">{error}</p>}
-
-      <footer className="mt-2 flex justify-end">
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="rounded-field bg-ink px-4 py-1.5 text-[13px] text-card disabled:opacity-40"
-        >
-          {busy ? 'Saving…' : 'Continue →'}
-        </button>
-      </footer>
-    </form>
-  )
-}
-
-function EntryStep({
-  kind,
-  draft,
-  onDraftChange,
-  entryId,
-  onEntryIdChange,
-  onDone,
-  onSkip,
-  onBack,
-}: {
-  kind: 'IN' | 'OUT'
-  draft: EntryDraft
-  onDraftChange: (next: EntryDraft) => void
-  entryId: string | null
-  onEntryIdChange: (id: string) => void
-  onDone: () => void
-  onSkip: () => void
-  onBack: () => void
-}) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const amountNum = Number(draft.amount)
-  const canSubmit =
-    draft.name.trim() !== '' && !Number.isNaN(amountNum) && draft.amount.trim() !== '' && !busy
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!canSubmit) return
-    setBusy(true)
-    setError(null)
-    try {
-      const payload = {
-        kind,
-        name: draft.name.trim(),
-        amount: amountNum,
-        startDate: draft.startDate,
-        rrule: findCadence(draft.cadence).rrule,
-      }
-      if (entryId) {
-        await updateEntry(entryId, payload)
-      } else {
-        const row = await createEntry(payload)
-        onEntryIdChange(row.id)
-      }
-      onDone()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save entry')
-      setBusy(false)
-    }
-  }
-
-  const heading = kind === 'IN' ? 'Add a recurring income' : 'Add a recurring expense'
-  const blurb =
-    kind === 'IN'
-      ? 'Paychecks, transfers in, anything you expect to land regularly. You can add more later from the Entries page.'
-      : 'Rent, subscriptions, card payments — anything that leaves on a schedule. You can add more later from the Entries page.'
-  const placeholder = kind === 'IN' ? 'e.g. Paycheck' : 'e.g. Rent'
-  const nameSlot = kind === 'IN' ? 'income' : 'expense'
-
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="card flex flex-col gap-4"
-      autoComplete="off"
-    >
-      <header>
-        <h1 className="text-[20px] font-medium tracking-tight">{heading}</h1>
-        <p className="mt-1 text-[12px] text-ink-2">{blurb}</p>
-      </header>
-
-      <Field label="Amount" id={`ob-${nameSlot}-amount`}>
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 mono text-ink-3">$</span>
-          <input
-            id={`ob-${nameSlot}-amount`}
-            type="text"
-            inputMode="decimal"
-            name={`cashflow-entry-${nameSlot}-amount`}
-            autoComplete="off"
-            data-1p-ignore
-            data-lpignore="true"
-            value={draft.amount}
-            onChange={(e) => onDraftChange({ ...draft, amount: e.target.value })}
-            onFocus={(e) => { if (e.target.value === DEFAULT_AMOUNT) e.target.select() }}
-            placeholder="0.00"
-            className="input pl-7 text-right tabular-nums"
-            autoFocus
-          />
-        </div>
-      </Field>
-
-      <Field label="Name" id={`ob-${nameSlot}-name`}>
-        <input
-          id={`ob-${nameSlot}-name`}
-          type="text"
-          name={`cashflow-entry-${nameSlot}-name`}
-          autoComplete="off"
-          data-1p-ignore
-          data-lpignore="true"
-          value={draft.name}
-          onChange={(e) => onDraftChange({ ...draft, name: e.target.value })}
-          onFocus={(e) => { if (e.target.value === placeholder) e.target.select() }}
-          placeholder={placeholder}
-          className="input"
-        />
-      </Field>
-
-      <Field label="Cadence">
-        <div className="flex flex-wrap gap-1.5">
-          {CADENCES.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              aria-pressed={draft.cadence === c.key}
-              onClick={() => onDraftChange({ ...draft, cadence: c.key })}
-              className={`rounded-chip border px-3 py-1 text-[12px] transition-colors ${
-                draft.cadence === c.key
-                  ? 'border-ink bg-ink text-card'
-                  : 'border-line-2 text-ink-2 hover:text-ink'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      </Field>
-
-      <Field label={draft.cadence === 'one-time' ? 'Date' : 'Starting'} id={`ob-${nameSlot}-start`}>
-        <input
-          id={`ob-${nameSlot}-start`}
-          type="date"
-          name={`cashflow-entry-${nameSlot}-start-date`}
-          autoComplete="off"
-          data-1p-ignore
-          data-lpignore="true"
-          value={draft.startDate}
-          onChange={(e) => onDraftChange({ ...draft, startDate: e.target.value })}
-          className="input"
-        />
-      </Field>
-
-      {error && <p role="alert" className="text-[12px] text-out-ink">{error}</p>}
-
-      <footer className="mt-2 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="rounded-field px-3 py-1.5 text-[13px] text-ink-2 hover:text-ink"
-        >
-          ← Back
-        </button>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="rounded-field px-3 py-1.5 text-[13px] text-ink-2 hover:text-ink"
-          >
-            Skip this step
-          </button>
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="rounded-field bg-ink px-4 py-1.5 text-[13px] text-card disabled:opacity-40"
-          >
-            {busy ? 'Saving…' : entryId ? 'Update & continue →' : 'Save & continue →'}
-          </button>
-        </div>
-      </footer>
-    </form>
-  )
-}
-
-function DevSeedBanner({ onSeed }: { onSeed: () => void }) {
-  const [busy, setBusy] = useState(false)
-
-  async function handleSeed() {
-    setBusy(true)
-    await seedDevData()
-    onSeed()
+  let screen: React.ReactNode
+  if (step === 0) {
+    screen = <ScreenWelcome onSetup={() => setStep(1)} onSample={loadSample} />
+  } else if (step === 1) {
+    screen = (
+      <ScreenBalance
+        balance={balance} setBalance={setBalance}
+        label={label} setLabel={setLabel}
+        asOf={asOf} setAsOf={setAsOf}
+        onBack={() => setStep(0)} onNext={() => setStep(2)}
+      />
+    )
+  } else if (step === 2) {
+    screen = (
+      <ScreenRecurring
+        balance={balance}
+        entries={entries} setEntries={setEntries}
+        onBack={() => setStep(1)} onNext={() => setStep(3)}
+      />
+    )
+  } else if (step === 3) {
+    screen = (
+      <ScreenReview
+        balance={balance} entries={entries}
+        onBack={() => setStep(2)} onFinish={finish}
+      />
+    )
+  } else {
+    screen = (
+      <ScreenDone
+        balance={balance} entries={entries}
+        onEnter={() => navigate({ to: '/' })}
+      />
+    )
   }
 
   return (
-    <div className="flex items-center justify-between rounded-card border border-dashed border-amber bg-amber-soft/40 px-4 py-3">
-      <div>
-        <p className="text-[11px] font-medium uppercase tracking-wider text-amber-ink mono">Dev</p>
-        <p className="text-[12px] text-ink-2">Load realistic sample budget — 4 income + 26 expense entries</p>
+    <div className="ob-page">
+      {/* key re-mounts to trigger the cross-fade animation on every step change */}
+      <div className="ob-step-anim" key={step}>
+        {screen}
       </div>
-      <button
-        type="button"
-        onClick={handleSeed}
-        disabled={busy}
-        className="rounded-field border border-amber bg-amber-soft px-3 py-1.5 text-[12px] font-medium text-amber-ink transition-colors hover:bg-amber/20 disabled:opacity-50"
-      >
-        {busy ? 'Loading…' : 'Seed data →'}
-      </button>
-    </div>
-  )
-}
-
-function Field({
-  label,
-  hint,
-  id,
-  children,
-}: {
-  label: string
-  hint?: string
-  id?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="micro mb-1.5 block">{label}</label>
-      {children}
-      {hint && <p className="mt-1 text-[11px] text-ink-3">{hint}</p>}
     </div>
   )
 }
