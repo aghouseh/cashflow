@@ -1,5 +1,6 @@
 {
   "name": "cashflow",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "imports": {
@@ -11,7 +12,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "design-system": "vite --config vite.config.design-system.ts"
+    "design-system": "vite --config vite.config.design-system.ts",
+    "release:patch": "npm version patch",
+    "release:minor": "npm version minor",
+    "release:major": "npm version major"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",

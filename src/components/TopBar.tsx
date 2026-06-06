@@ -39,7 +39,7 @@ export default function TopBar() {
               cashflow
             </span>
             <span className="rounded-chip border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-accent-ink">
-              beta
+              beta · v{__APP_VERSION__}
             </span>
           </Link>
 
