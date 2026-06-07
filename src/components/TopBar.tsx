@@ -43,7 +43,7 @@ export default function TopBar() {
           <div
             id="version-popover"
             popover="hint"
-            className="rounded-chip border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-widest text-accent-ink [position-anchor:--brand-link] top-[anchor(bottom)] left-[anchor(left)] mt-1.5 m-0"
+            className="rounded-chip border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-widest text-accent-ink [position-anchor:--brand-link] top-[anchor(center)] left-[anchor(right)] m-0 ml-2 -translate-y-1/2"
           >
             beta · v{__APP_VERSION__}
           </div>
