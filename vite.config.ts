@@ -6,8 +6,12 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import sqlocal from 'sqlocal/vite'
+import { version } from './package.json' with { type: 'json' }
 
 const config = defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   resolve: {
     tsconfigPaths: true,
     dedupe: ['react', 'react-dom'],

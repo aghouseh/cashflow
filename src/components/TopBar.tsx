@@ -29,7 +29,8 @@ export default function TopBar() {
         <nav className="relative mx-auto flex h-full max-w-270 items-center px-6">
           <Link
             to="/"
-            className="flex items-center gap-2 no-underline text-ink"
+            className="flex items-center gap-2 no-underline text-ink [anchor-name:--brand-link]"
+            interestfor="version-popover"
           >
             <span
               aria-hidden
@@ -38,10 +39,14 @@ export default function TopBar() {
             <span className="mono text-[12px] uppercase tracking-[0.16em]">
               cashflow
             </span>
-            <span className="rounded-chip border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-accent-ink">
-              beta
-            </span>
           </Link>
+          <div
+            id="version-popover"
+            popover="hint"
+            className="rounded-chip border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-widest text-accent-ink [position-anchor:--brand-link] top-[anchor(center)] left-[anchor(right)] m-0 ml-2 -translate-y-1/2"
+          >
+            beta · v{__APP_VERSION__}
+          </div>
 
           {!isOnboarding && (
             <ul className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
@@ -50,7 +55,7 @@ export default function TopBar() {
                   <Link
                     to={to}
                     activeOptions={{ exact: true }}
-                    className="block rounded-[6px] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-ink-3 no-underline transition-colors hover:text-ink aria-[current=page]:bg-card-2 aria-[current=page]:text-ink"
+                    className="block rounded-md px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.06em] text-ink-3 no-underline transition-colors hover:text-ink aria-[current=page]:bg-card-2 aria-[current=page]:text-ink"
                     activeProps={{ "aria-current": "page" as const }}
                   >
                     {label}
