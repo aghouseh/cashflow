@@ -29,7 +29,7 @@ export default function TopBar() {
         <nav className="relative mx-auto flex h-full max-w-270 items-center px-6">
           <Link
             to="/"
-            className="flex items-center gap-2 no-underline text-ink"
+            className="group relative flex items-center gap-2 no-underline text-ink"
           >
             <span
               aria-hidden
@@ -38,7 +38,7 @@ export default function TopBar() {
             <span className="mono text-[12px] uppercase tracking-[0.16em]">
               cashflow
             </span>
-            <span className="rounded-chip border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-accent-ink">
+            <span className="pointer-events-none absolute left-0 top-full mt-1.5 rounded-chip border border-accent bg-accent-soft px-1.5 py-px font-mono text-[9px] font-medium uppercase tracking-widest text-accent-ink opacity-0 transition-opacity duration-150 group-hover:opacity-100">
               beta · v{__APP_VERSION__}
             </span>
           </Link>
